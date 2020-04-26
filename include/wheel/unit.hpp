@@ -638,6 +638,12 @@ namespace wheel {
 			return value;
 		}
 
+        //c++14使用传入lambda表达式
+        template <typename F,typename ...Args>
+		void for_each_args(F&&func,Args...args){
+			int arr[] = { (std::forward<F>(func)(args),0)... };
+		}
+
 		//单个tuple去索引
 		template <typename Tuple, typename F, std::size_t...Is>
 		void tuple_switch(const std::size_t i, Tuple&& t, F&& f, wheel::traits::index_sequence<Is...>) {
