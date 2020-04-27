@@ -673,7 +673,7 @@ namespace wheel {
 
 
 		template<typename F, typename...Ts, std::size_t...Is>
-		void for_each_tuple_front(const std::tuple<Ts...>& tuple, F func, wheel::traits::index_sequence<Is...>) {
+		void for_each_tuple_front(std::tuple<Ts...>&& tuple, F&& func, wheel::traits::index_sequence<Is...>) {
 			constexpr auto SIZE = std::tuple_size<wheel::traits::remove_reference_t<decltype(tuple)>>::value;
 #if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
 			if (constexpr(SIZE >0)) {
@@ -695,12 +695,12 @@ namespace wheel {
 		}
 
 		template<typename F, typename...Ts>
-		void for_each_tuple_front(const std::tuple<Ts...>& tuple, F func) {
-			for_each_tuple_front(tuple, func,wheel::traits::make_index_sequence<sizeof...(Ts)>());
+		void for_each_tuple_front(std::tuple<Ts...>&& tuple, F&& func) {
+			for_each_tuple_front(std::forward<std::tuple<Ts...>>(tuple), func,wheel::traits::make_index_sequence<sizeof...(Ts)>());
 		}
 
 		template<typename F, typename...Ts, std::size_t...Is>
-		void for_each_tuple_back(const std::tuple<Ts...>& tuple, F func, wheel::traits::index_sequence<Is...>) {
+		void for_each_tuple_back(std::tuple<Ts...>&& tuple, F&& func, wheel::traits::index_sequence<Is...>) {
 			//匿名构造函数调用
 			constexpr auto SIZE = std::tuple_size<wheel::traits::remove_reference_t<decltype(tuple)>>::value;
 #if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
@@ -721,13 +721,13 @@ namespace wheel {
 		}
 
 		template<typename F, typename...Ts>
-		void for_each_tuple_back(std::tuple<Ts...>& tuple, F func) {
-			for_each_tuple_back(tuple, func, wheel::traits::make_index_sequence<sizeof...(Ts)>());
+		void for_each_tuple_back(std::tuple<Ts...>&& tuple, F&& func) {
+			for_each_tuple_back(std::forward<std::tuple<Ts...>>(tuple), func, wheel::traits::make_index_sequence<sizeof...(Ts)>());
 		}
 
 		//单个参数传单个参数，没有index(tuple不能空)
 		template <typename... Args, typename F, std::size_t... Idx>
-		constexpr void for_each0(std::tuple<Args...>& t, F&& f, wheel::traits::index_sequence<Idx...>) {
+		constexpr void for_each0(std::tuple<Args...>&& t, F&& f, wheel::traits::index_sequence<Idx...>) {
 			constexpr auto N = std::tuple_size <wheel::traits::remove_reference_t<decltype(t)>>::value;
 
 			//编译器编译时，会做判断
@@ -740,7 +740,7 @@ namespace wheel {
 
 
 		template <typename... Args, typename F, std::size_t... Idx>
-		constexpr void for_each_l(std::tuple<Args...>& t, F&& f, wheel::traits::index_sequence<Idx...>) {
+		constexpr void for_each_l(std::tuple<Args...>&& t, F&& f, wheel::traits::index_sequence<Idx...>) {
 
 			constexpr auto size = sizeof...(Idx);
 			if constexpr (size > 0) {
@@ -752,7 +752,7 @@ namespace wheel {
 		}
 
 		template <typename... Args, typename F, std::size_t... Idx>
-		constexpr void for_each_r(std::tuple<Args...>& t, F&& f, wheel::traits::index_sequence<Idx...>) {
+		constexpr void for_each_r(std::tuple<Args...>&& t, F&& f, wheel::traits::index_sequence<Idx...>) {
 			constexpr auto size = sizeof...(Idx);
 			if constexpr (size > 0) {
 				using expander = int[];

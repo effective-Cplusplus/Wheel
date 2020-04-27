@@ -106,8 +106,9 @@ namespace wheel {
 			template<typename Function, typename... AP>
 			void invoke(request& req, response& res, Function f, AP... ap) {
 				using result_type = std::result_of_t<Function(request&, response&)>;
-				std::tuple<AP...> tp(std::move(ap)...);
-				bool r = do_ap_before(req, res, tp);
+				std::tuple<AP...> before_tp(std::move(ap)...);
+				std::tuple<AP...>after_tp = before_tp;
+				bool r = do_ap_before(req, res, std::move(before_tp));
 
 				if (!r) {
 					return;
@@ -117,13 +118,13 @@ namespace wheel {
 					//business
 					f(req, res);
 					//after
-					do_void_after(req, res, tp);
+					do_void_after(req, res,std::move(after_tp));
 				}
 				else {
 					//business
 					result_type result = f(req, res);
 					//after
-					do_after(std::move(result), req, res, tp);
+					do_after(std::move(result), req, res, std::move(after_tp));
 				}
 			}
 
@@ -170,9 +171,9 @@ namespace wheel {
 			}
 
 			template<typename Tuple>
-			bool do_ap_before(request& req, response& res, Tuple& tp) {
+			bool do_ap_before(request& req, response& res, Tuple&& tp) {
 				bool r = true;
-				wheel::unit::for_each_l(tp, [&r, &req, &res](auto& item) {
+				wheel::unit::for_each_l(std::forward<Tuple>(tp), [&r, &req, &res](auto& item) {
 					if (!r)
 						return;
 
@@ -185,9 +186,9 @@ namespace wheel {
 			}
 
 			template<typename Tuple>
-			void do_void_after(request& req, response& res, Tuple& tp) {
+			void do_void_after(request& req, response& res, Tuple&& tp) {
 				bool r = true;
-				wheel::unit::for_each_r(tp, [&r, &req, &res](auto& item) {
+				wheel::unit::for_each_r(std::forward<Tuple>(tp), [&r, &req, &res](auto& item) {
 					if (!r)
 						return;
 
@@ -198,9 +199,9 @@ namespace wheel {
 			}
 
 			template<typename T, typename Tuple>
-			void do_after(T&& result, request& req, response& res, Tuple& tp) {
+			void do_after(T&& result, request& req, response& res, Tuple&& tp) {
 				bool r = true;
-				for_each_r(tp, [&r, result = std::move(result), &req, &res](auto& item){
+				wheel::unit::for_each_r(std::forward<Tuple>(tp), [&r, result = std::move(result), &req, &res](auto& item){
 					if (!r)
 						return;
 

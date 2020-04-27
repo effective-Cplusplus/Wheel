@@ -289,13 +289,13 @@ static auto reflector_reflect_members(ClassName const&) \
 		template<typename T, typename F>
 		void  for_each_tuple_front(T&& t, F&& f) {
 			using M = decltype(reflector_reflect_members(std::forward<T>(t)));
-			unit::for_each_tuple_front(M::apply_impl(), std::forward<F>(f), wheel::traits::make_index_sequence<M::size()>{});
+			unit::for_each_tuple_front(std::move(M::apply_impl()), std::forward<F>(f), wheel::traits::make_index_sequence<M::size()>{});
 		}
 
 		template<typename T, typename F>
 		void  for_each_tuple_back(T&& t, F&& f) {
 			using M = decltype(reflector_reflect_members(std::forward<T>(t)));
-			unit::for_each_tuple_back(M::apply_impl(), std::forward<F>(f), wheel::traits::make_index_sequence<M::size()>{});
+			unit::for_each_tuple_back(std::move(M::apply_impl()), std::forward<F>(f), wheel::traits::make_index_sequence<M::size()>{});
 		}
 
 		template <typename... Args, typename F, std::size_t... Idx>
