@@ -14,6 +14,7 @@
 1. 支持http和https业务
 1. 支持utf8,utf16,utf32和string 转换
 1. 支持chunked 传输 from-data、string、 www-form-urlencoded和解析
+1. 新增nanolog日志支持
 ## 说明
 1. 使用websocket代码需要设置包含third_paty下的库
 1. 使用c++11以及以上编译(若c++11编译不过，请用c++14)
@@ -380,4 +381,20 @@ int main()
 		});
 
 	server.run();
+}
+```
+```cpp
+#include <iostream>
+#include <nanolog.hpp>
 
+int main()
+{
+	//走后两个参数5M,保留10个文件
+	nanolog::Logger::initialize(nanolog::GuaranteedLogger(), "./log/", "http_server.log",5, 10);
+	nanolog::Logger::set_log_level(nanolog::LogLevel::INFO);
+	LOG_INFO << "Sample NanoLog: " << 1 << 2.5 << 'c';
+
+	LOG_CRIT << "failed to init rpc_manager";
+
+	LOG_WARN << "exwss";
+}
