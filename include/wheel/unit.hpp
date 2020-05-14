@@ -604,23 +604,26 @@ namespace wheel {
 		static int32_t stringHex_to_int(const char* hex_str)
 		{
 			int32_t value = -1;
-			if (hex_str != nullptr) {
-				std::istringstream istr(hex_str);
-				istr >> std::hex >> value;
+			if (strlen(hex_str) ==0 || hex_str == nullptr){
+				return value;
 			}
 
-			return std::move(value);
+			std::istringstream istr(hex_str);
+			istr >> std::hex >> value;
+			return value;
 		}
 
-		static int32_t stringDec_to_int(const char* hex_str)
+		static int32_t stringDec_to_int(const char* str)
 		{
 			int32_t value = -1;
-			if (hex_str != nullptr) {
-				std::istringstream istr(hex_str);
-				istr >> value;
+			if (strlen(str) == 0 || str == nullptr) {
+				return value;
 			}
 
-			return std::move(value);
+			std::istringstream istr(str);
+			istr >> value;
+
+			return value;
 		}
 
 		static std::string find_substr(const std::string& str, const std::string key, const std::string& diml) {
