@@ -14,7 +14,7 @@ namespace wheel {
 		public:
 			http_server(){
 				init_conn_callback();
-				strand_ = std::make_unique<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
+				strand_ = wheel::traits::make_unique<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
 			}
 
 			~http_server() {
@@ -29,15 +29,15 @@ namespace wheel {
 
 				//accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*ios_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
 				boost::system::error_code ec;
-				accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_poll::get_instance().get_io_service());
+				accept_ =wheel::traits::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_poll::get_instance().get_io_service());
 
-				//Ò»¶¨Òªµ÷ÓÃopen·ñÔò»á¼àÌýÊ§°Ü
+				//ä¸€å®šè¦è°ƒç”¨openå¦åˆ™ä¼šç›‘å¬å¤±è´¥
 				accept_->open(boost::asio::ip::tcp::v4());
 				accept_->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), ec);
 				accept_->bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port),ec);
 				accept_->listen(boost::asio::socket_base::max_connections, ec);
 				if (ec){
-					std::cout << "·þÎñÆ÷¼àÌýÊ§°Ü:"<<ec.message() << std::endl;
+					std::cout << "æœåŠ¡å™¨ç›‘å¬å¤±è´¥:"<<ec.message() << std::endl;
 					return;
 				}
 
@@ -56,7 +56,7 @@ namespace wheel {
 				io_service_poll::get_instance().run(thread_num);
 			}
 
-			//Ó¦´ðµÄÊ±ºòÊÇ·ñÐèÒª¼ÓÉÏÊ±¼ä
+			//åº”ç­”çš„æ—¶å€™æ˜¯å¦éœ€è¦åŠ ä¸Šæ—¶é—´
 			void enable_response_time(bool enable) {
 				need_response_time_ = enable;
 			}
@@ -99,7 +99,7 @@ namespace wheel {
 					return;
 				}
 
-				//·¢Ò»´ÎÊý¾Ý½ÓÊÕÒ»´Î
+				//å‘ä¸€æ¬¡æ•°æ®æŽ¥æ”¶ä¸€æ¬¡
 				accept_->async_accept(new_session->get_socket(),strand_->wrap([this, new_session](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
