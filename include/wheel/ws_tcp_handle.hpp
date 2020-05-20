@@ -208,12 +208,16 @@ namespace wheel {
 			}
 
 			int connect(std::string ip, int port,const std::string & handleshake_msg,std::string handleshake_key,MessageEventObserver recv_observer, CloseEventObserver close_observer) {
-				if (!unit::ip_v4_check(ip) || socket_ == nullptr || !unit::ip_v6_check(ip)){
+				if (socket_ == nullptr ){
 					return -1;
 				}
 
 				boost::system::error_code err;
-				socket_->connect(TCP::endpoint(ADDRESS::from_string(ip), port), err);
+				boost::asio::io_service io_service;
+				boost::asio::ip::tcp::resolver resolver(io_service);
+				boost::asio::ip::tcp::endpoint ep(boost::asio::ip::address::from_string(ip, err), port);
+				auto endpoint = resolver.resolve(ep, err);
+				socket_->connect(*endpoint, err);
 
 				connect_status_ = err.value() == 0 ? connectinged : disconnect;
 
