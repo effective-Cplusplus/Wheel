@@ -52,6 +52,10 @@ namespace wheel {
 			}
 
 			int connect(std::string ip, int port) {
+				if (ip.empty()){
+					return -1;
+				}
+
 				server_ip_ = std::move(ip);
 				server_port_ = std::move(port);
 				auto tuple_data = handshake(ip, "/");

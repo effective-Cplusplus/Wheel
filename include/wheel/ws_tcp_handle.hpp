@@ -207,7 +207,7 @@ namespace wheel {
 				seconds_ = seconds;
 			}
 
-			int connect(std::string ip, int port,const std::string & handleshake_msg,std::string handleshake_key,MessageEventObserver recv_observer, CloseEventObserver close_observer) {
+			int connect(const std::string& ip, int port,const std::string & handleshake_msg,std::string handleshake_key,MessageEventObserver recv_observer, CloseEventObserver close_observer) {
 				if (socket_ == nullptr ){
 					return -1;
 				}

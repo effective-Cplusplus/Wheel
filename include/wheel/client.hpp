@@ -66,7 +66,7 @@ namespace wheel {
 			}
 
 			int connect(std::string ip, int port) {
-				if ( tcp_handler_ == nullptr) {
+				if ( tcp_handler_ == nullptr || ip.empty()) {
 					return -1;
 				}
 
