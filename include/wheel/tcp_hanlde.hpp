@@ -195,11 +195,8 @@ namespace wheel {
 				}
 
 				boost::system::error_code err;
-				boost::asio::io_service io_service;
-				boost::asio::ip::tcp::resolver resolver(io_service);
-				boost::asio::ip::tcp::endpoint ep(boost::asio::ip::address::from_string(ip, err), port);
-				auto endpoint = resolver.resolve(ep, err);
-				socket_->connect(*endpoint, err);
+				boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(ip, err), port);
+				socket_->connect(endpoint, err);
 
 				connect_status_ = err.value() == 0 ? connectinged : disconnect;
 
