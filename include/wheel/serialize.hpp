@@ -191,7 +191,7 @@ namespace wheel {
 		}
 
 		template<typename Stream, typename T>
-		constexpr auto to_json(Stream& s, T&& t)->std::enable_if_t<traits::is_tuple<std::decay_t<T>>::value> {
+		static auto to_json(Stream& s, T&& t)->std::enable_if_t<traits::is_tuple<std::decay_t<T>>::value> {
 			using U = typename std::decay_t<T>;
 			s.put('[');
 			const size_t size = std::tuple_size_v<U>;
