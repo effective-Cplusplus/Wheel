@@ -102,12 +102,12 @@ namespace wheel {
 		static std::enable_if_t<reflector::is_reflection<T>::value> to_json(Stream& ss, T&& t);
 
 		template<typename Stream, typename T>
-		std::enable_if_t<reflector::is_reflection<T>::value> render_json_value(Stream& ss, T&& t){
+		static std::enable_if_t<reflector::is_reflection<T>::value> render_json_value(Stream& ss, T&& t){
 			to_json(ss, std::forward<T>(t));
 		}
 
 		template<typename Stream, typename T>
-		std::enable_if_t <std::is_enum<T>::value> render_json_value(Stream& ss, T val){
+		static std::enable_if_t <std::is_enum<T>::value> render_json_value(Stream& ss, T val){
 			render_json_value(ss, (std::underlying_type_t<T>&)val);
 		}
 
@@ -132,7 +132,7 @@ namespace wheel {
 		}
 
 		template<typename Stream, typename T>
-		std::enable_if_t <traits::is_associat_container<T>::value>
+		static std::enable_if_t <traits::is_associat_container<T>::value>
 			render_json_value(Stream& ss, const T& o) {
 			ss.put('{');
 			join(ss, o.cbegin(), o.cend(), ',',
