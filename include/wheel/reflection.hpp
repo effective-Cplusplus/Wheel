@@ -231,6 +231,13 @@ static auto reflector_reflect_members(ClassName const&) \
 			return std::make_tuple(std::ref(get<Is>(t))...);
 		}
 
+		template<typename T>
+		constexpr auto get_impl(T&& t) {
+			using M = decltype(reflector_reflect_members(std::forward<T>(t)));
+
+			return M::apply_impl();
+		}
+
 		template <typename T>
 		constexpr auto get(T const& t) {
 			using M = decltype(reflector_reflect_members(t));
