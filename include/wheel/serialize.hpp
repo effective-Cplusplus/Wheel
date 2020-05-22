@@ -152,8 +152,6 @@ namespace wheel {
 					render_json_value(ss, jsv);
 				});
 			ss.put(']');
-
-			return true;
 		}
 
 		auto write_json_key = [](auto& s, auto i, auto& t) {
@@ -171,21 +169,11 @@ namespace wheel {
 			s.put('[');
 			const size_t size = v.size();
 			for (size_t i = 0; i < size; i++){
-#if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
-				if (constexpr (flag)) {
+				if (flag) {
 					to_json(s, v[i]);
 				}else {
 					render_json_value(s, v[i]);
 				}
-
-#else
-				if constexpr (flag) {
-					to_json(s, v[i]);
-				}else {
-					render_json_value(s, v[i]);
-				}
-#endif// _MSC_VER <=1923
-
 
 				if (i != size - 1) {
 					s.put(',');
@@ -219,25 +207,14 @@ namespace wheel {
 			reflector::for_each_tuple_front(t, [&t, &s,Size](const auto& v, auto i){
 				constexpr auto Idx = decltype(i)::value;
 				constexpr auto Count = reflector::get_size<T>();
-				constexpr auto flag = reflector::is_reflection<decltype(v)>::value;
+
 				static_assert(Idx < Count,"Idx >Count");
 
 				write_json_key(s, i,t);
 				s.put(':');
 
-#if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
-				if (constexpr (!flag)) {
-					render_json_value(s, t.*v);
-				}else {
-					to_json(s, t.*v);
-				}
-#else
-				if constexpr (!flag){
-					render_json_value(s, t.*v);
-				}else{
-					to_json(s, t.*v);
-				}
-#endif// _MSC_VER <=1923
+				render_json_value(s, t.*v);
+
 				if (Idx < Count - 1) {
 					s.put(',');
 				}
@@ -1313,7 +1290,6 @@ namespace wheel {
 						do_read0(rd, t.*v);
 						rd.next();
 					}
-					}, traits::make_index_sequence<Size>{});
 #else
 					if constexpr (!flag){
 						rd.next();
@@ -1325,9 +1301,9 @@ namespace wheel {
 						do_read0(rd, t.*v);
 						rd.next();
 					}
-					}, traits::make_index_sequence<Size>{});
+					
 #endif // _MSC_VER <=1923
-
+			}, traits::make_index_sequence<Size>{});
 				loop_idx++;
 			}
 		}
