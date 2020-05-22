@@ -166,18 +166,20 @@ namespace wheel {
 		template<typename Stream, typename T>
 		static std::enable_if_t<traits::is_sequence_container<std::decay_t<T>>::value> to_json(Stream& s, T&& v){
 			using U = typename std::decay_t<T>::value_type;
+			constexpr auto flag = reflector::is_reflection_v<U>;
+
 			s.put('[');
 			const size_t size = v.size();
 			for (size_t i = 0; i < size; i++){
 #if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
-				if (constexpr (reflector::is_reflection_v<U>)) {
+				if (constexpr (flag)) {
 					to_json(s, v[i]);
 				}else {
 					render_json_value(s, v[i]);
 				}
 
 #else
-				if constexpr (reflector::is_reflection_v<U>) {
+				if constexpr (flag) {
 					to_json(s, v[i]);
 				}else {
 					render_json_value(s, v[i]);
@@ -217,19 +219,20 @@ namespace wheel {
 			reflector::for_each_tuple_front(t, [&t, &s,Size](const auto& v, auto i){
 				constexpr auto Idx = decltype(i)::value;
 				constexpr auto Count = reflector::get_size<T>();
+				constexpr auto flag = reflector::is_reflection<decltype(v)>::value;
 				static_assert(Idx < Count,"Idx >Count");
 
 				write_json_key(s, i,t);
 				s.put(':');
 
 #if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
-				if (constexpr (!reflector::is_reflection<decltype(v)>::value)){
+				if (constexpr (!flag)) {
 					render_json_value(s, t.*v);
-				}else{
+				}else {
 					to_json(s, t.*v);
 				}
 #else
-				if constexpr (!reflector::is_reflection<decltype(v)>::value){
+				if constexpr (!flag){
 					render_json_value(s, t.*v);
 				}else{
 					to_json(s, t.*v);
@@ -1149,8 +1152,9 @@ namespace wheel {
 					static_assert(Idx < Count,"Idx >Count ");
 
 					using type_v = decltype(std::declval<T>().*std::declval<decltype(v)>());
+					constexpr auto flag = reflector::is_reflection<type_v>::value;
 #if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
-					if (constexpr (!reflector::is_reflection<type_v>::value)){
+					if (constexpr (!flag)){
 						rd.next();
 						if (rd.peek().str != reflector::get_name<T, Idx>().data()) {
 							g_has_error = true;
@@ -1168,7 +1172,7 @@ namespace wheel {
 						rd.next();
 					}
 #else
-					if constexpr (!reflector::is_reflection<type_v>::value){
+					if constexpr (!flag){
 						rd.next();
 						if (rd.peek().str != reflector::get_name<T, Idx>().data()) {
 							g_has_error = true;
@@ -1191,15 +1195,17 @@ namespace wheel {
 
 		template<typename U, typename T>
 		static void assign(reader_t& rd, T& t) {
+			constexpr auto flag = reflector::is_reflection<U>::value;
+
 #if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
-			if (constexpr (!reflector::is_reflection<U>::value)){
+			if (constexpr (!flag)){
 				read_json(rd, t);
 			}else{
 				do_read(rd, t);
 				rd.next();
 			}
 #else
-			if constexpr (!reflector::is_reflection<U>::value){
+			if constexpr (!flag){
 				read_json(rd, t);
 			}else{
 				do_read(rd, t);
@@ -1294,8 +1300,10 @@ namespace wheel {
 
 				unit::tuple_switch(index, tp, [&t, &rd](auto& v) {
 					using type_v = decltype(std::declval<T>().*std::declval<decltype(v)>());
+					constexpr auto flag = reflector::is_reflection<type_v>::value;
+
 #if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
-					if (constexpr (!reflector::is_reflection<type_v>::value)){
+					if (constexpr (!flag)){
 						rd.next();
 						rd.next();
 						read_json(rd, t.*v);
@@ -1307,7 +1315,7 @@ namespace wheel {
 					}
 					}, traits::make_index_sequence<Size>{});
 #else
-					if constexpr (!reflector::is_reflection<type_v>::value){
+					if constexpr (!flag){
 						rd.next();
 						rd.next();
 						read_json(rd, t.*v);
