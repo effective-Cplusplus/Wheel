@@ -22,8 +22,9 @@ namespace wheel {
 
 		template<typename Stream, typename InputIt, typename T, typename F>
 		void join(Stream& ss, InputIt first, InputIt last, const T& delim, const F& f) {
-			if (first == last)
+			if (first == last) {
 				return;
+			}
 
 			f(*first++);
 			while (first != last) {
@@ -98,10 +99,10 @@ namespace wheel {
 		}
 
 		template<typename Stream, typename T>
-		static auto to_json(Stream& ss, T&& t)->std::enable_if_t<reflector::is_reflection<T>::value>;
+		static std::enable_if_t<reflector::is_reflection<T>::value> to_json(Stream& ss, T&& t);
 
 		template<typename Stream, typename T>
-		auto render_json_value(Stream& ss, T&& t) -> std::enable_if_t<reflector::is_reflection<T>::value>{
+		std::enable_if_t<reflector::is_reflection<T>::value> render_json_value(Stream& ss, T&& t){
 			to_json(ss, std::forward<T>(t));
 		}
 
@@ -151,6 +152,8 @@ namespace wheel {
 					render_json_value(ss, jsv);
 				});
 			ss.put(']');
+
+			return true;
 		}
 
 		auto write_json_key = [](auto& s, auto i, auto& t) {
@@ -161,7 +164,7 @@ namespace wheel {
 		};
 
 		template<typename Stream, typename T>
-		static auto to_json(Stream& s, T&& v)->std::enable_if_t<traits::is_sequence_container<std::decay_t<T>>::value>{
+		static std::enable_if_t<traits::is_sequence_container<std::decay_t<T>>::value> to_json(Stream& s, T&& v){
 			using U = typename std::decay_t<T>::value_type;
 			s.put('[');
 			const size_t size = v.size();
@@ -191,7 +194,7 @@ namespace wheel {
 		}
 
 		template<typename Stream, typename T>
-		static auto to_json(Stream& s, T&& t)->std::enable_if_t<traits::is_tuple<std::decay_t<T>>::value> {
+		static std::enable_if_t<traits::is_tuple<std::decay_t<T>>::value> to_json(Stream& s, T&& t) {
 			using U = typename std::decay_t<T>;
 			s.put('[');
 			const size_t size = std::tuple_size_v<U>;
@@ -207,7 +210,7 @@ namespace wheel {
 		}
 
 		template<typename Stream, typename T>
-		static auto to_json(Stream& s, T&& t) -> std::enable_if_t<reflector::is_reflection<T>::value>{
+		static std::enable_if_t<reflector::is_reflection<T>::value> to_json(Stream& s, T&& t){
 			constexpr auto Size = reflector::get_size<T>();
 
 			s.put('{');
@@ -1132,14 +1135,14 @@ namespace wheel {
 			rd.next();
 		}
 
-		template<typename T, typename = std::enable_if_t<reflector::is_reflection<T>::value>>
-		static void read_json(reader_t& rd, T& val) {
+		template<typename T>
+		static std::enable_if_t<reflector::is_reflection<T>::value> read_json(reader_t& rd, T& val) {
 			do_read(rd, val);
 			rd.next();
 		}
 
 		template<typename T>
-		static constexpr std::enable_if_t<reflector::is_reflection_v<T>> do_read(reader_t& rd, T&& t){
+		static std::enable_if_t<reflector::is_reflection<T>::value> do_read(reader_t& rd, T&& t){
 			reflector::for_each_tuple_front(t, [&t, &rd](const auto& v, auto i){
 					constexpr auto Idx = decltype(i)::value;
 					constexpr auto Count =reflector::get_size<T>();
@@ -1213,7 +1216,7 @@ namespace wheel {
 		}
 
 		template<typename T>
-		inline constexpr std::enable_if_t<traits::is_tuple<std::decay_t<T>>::value, bool>
+		static std::enable_if_t<traits::is_tuple<std::decay_t<T>>::value, bool>
 			from_json(T&& t, const char* buf, size_t len = -1) {
 			using U = std::decay_t<T>;
 			g_has_error = false;
@@ -1227,7 +1230,7 @@ namespace wheel {
 		}
 
 		template<typename T>
-		static auto from_json(T&& v, const char* buf, size_t len = -1)->std::enable_if_t<traits::is_sequence_container<std::decay_t<T>>::value, bool> {
+		static std::enable_if_t<traits::is_sequence_container<std::decay_t<T>>::value, bool> from_json(T&& v, const char* buf, size_t len = -1) {
 			v.clear();
 			using U = typename std::decay_t<T>::value_type;
 			U t{};
@@ -1246,7 +1249,7 @@ namespace wheel {
 		}
 
 		template<typename T>
-		inline constexpr std::enable_if_t<reflector::is_reflection_v<T>, bool> 
+		static std::enable_if_t<reflector::is_reflection_v<T>, bool> 
 			from_json(T&& t, const char* buf, size_t len = -1) {
 			g_has_error = false;
 			reader_t rd(buf, len);
@@ -1263,8 +1266,8 @@ namespace wheel {
 			return !g_has_error;
 		}
 
-		template<typename T, typename = std::enable_if_t<reflector::is_reflection<T>::value>>
-		static void do_read0(reader_t& rd, T&& t){
+		template<typename T>
+		static std::enable_if_t<reflector::is_reflection<T>::value> do_read0(reader_t& rd, T&& t){
 			auto tp = reflector::get_impl(std::forward<T>(t));
 			constexpr auto Size = reflector::get_size<T>();
 			size_t loop_idx = 0;
