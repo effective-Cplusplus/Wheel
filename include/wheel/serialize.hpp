@@ -197,7 +197,7 @@ namespace wheel {
 		static std::enable_if_t<traits::is_tuple<std::decay_t<T>>::value> to_json(Stream& s, T&& t) {
 			using U = typename std::decay_t<T>;
 			s.put('[');
-			const size_t size = std::tuple_size_v<U>;
+			const size_t size = std::tuple_size<U>::value;
 			reflector::for_each_tuple_front(t, [&s, size](auto& v, auto i) {
 				render_json_value(s, v);
 
