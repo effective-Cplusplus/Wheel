@@ -782,16 +782,23 @@ namespace wheel {
 		//	}
 		//);
 
-		static 	int domain_name_query(const std::string& domain_name, std::vector< std::string >& ips)
+		static 	int domain_name_query(const std::string& domain_name, std::vector< std::string >& ips, bool is_http = true)
 		{
 			boost::asio::io_service io_service;
 
 			boost::asio::ip::tcp::resolver resolver(io_service);
 
-			boost::asio::ip::tcp::resolver::query q(boost::asio::ip::tcp::v4(), domain_name);
-
 			boost::system::error_code ec;
-			boost::asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(q, ec);
+			boost::asio::ip::tcp::resolver::iterator endpoint_iterator;
+			if (is_http) {
+				boost::asio::ip::tcp::resolver::query q(boost::asio::ip::tcp::v4(), domain_name);
+				endpoint_iterator = resolver.resolve(q, ec);
+			}
+			else {
+				boost::asio::ip::tcp::resolver::query q(boost::asio::ip::tcp::v4(), domain_name, "https");
+				endpoint_iterator = resolver.resolve(q, ec);
+			}
+
 
 			if (ec.value() == 0)
 			{
