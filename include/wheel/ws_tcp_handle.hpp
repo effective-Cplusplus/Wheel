@@ -367,6 +367,12 @@ namespace wheel {
 				return ec.value();
 			}
 
+			void send_ws_msg(std::string msg, opcode op) {
+				std::shared_ptr<websocket_handle>ptr = std::make_shared<websocket_handle>();
+				std::string header = ptr->format_header(msg.size(), op);
+				std::string temp_msg = header + msg;
+				to_send(temp_msg.c_str(), temp_msg.size());
+			}
 		private:
 			void init() {
 				if (socket_ == nullptr){
@@ -541,13 +547,6 @@ namespace wheel {
 
 			void set_connect_status(int status) {
 				connect_status_ = status;
-			}
-
-			void send_ws_msg(std::string msg, opcode op) {
-				std::shared_ptr<websocket_handle>ptr = std::make_shared<websocket_handle>();
-				std::string header = ptr->format_header(msg.size(), op);
-				std::string temp_msg = header + msg;
-				to_send(temp_msg.c_str(), temp_msg.size());
 			}
 		private:
 			bool fetch_http_info(const char* request, std::size_t bytes_transferred) {
