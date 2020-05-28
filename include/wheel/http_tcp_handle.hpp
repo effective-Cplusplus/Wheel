@@ -52,11 +52,11 @@ namespace wheel {
 				init_multipart_parser();
 			}
 
-			auto& get_socket()const {
+			boost::asio::ip::tcp::socket* get_socket()const {
 #ifdef WHEEL_ENABLE_SSL
-				return ssl_socket_->lowest_layer();
+				return &ssl_socket_->lowest_layer();
 #else
-				return *socket_;
+				return socket_.get();
 #endif
 			}
 

@@ -99,8 +99,13 @@ namespace wheel {
 					return;
 				}
 
+				auto socket_ptr = new_session->get_socket();
+				if (socket_ptr == nullptr) {
+					return;
+				}
+
 				//发一次数据接收一次
-				accept_->async_accept(new_session->get_socket(),strand_->wrap([this, new_session](const boost::system::error_code& ec) {
+				accept_->async_accept(*socket_ptr,strand_->wrap([this, new_session](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
