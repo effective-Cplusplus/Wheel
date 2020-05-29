@@ -37,7 +37,7 @@ namespace wheel {
 				buffer_.resize(1024);
 			}
 
-			char* buffer(){
+			char* buffer() {
 				return &buffer_[cur_size_];
 			}
 
@@ -45,7 +45,7 @@ namespace wheel {
 				return &buffer_[cur_size_];
 			}
 
-			void set_client_chunked_data(const char*str) {
+			void set_client_chunked_data(const char* str) {
 				client_chunked_data_.append(str);
 			}
 
@@ -120,7 +120,7 @@ namespace wheel {
 					return { gzip_str_.data(), gzip_str_.length() };
 				}
 
-				if (is_chunked()){
+				if (is_chunked()) {
 					return client_chunked_data_;
 				}
 
@@ -234,7 +234,9 @@ namespace wheel {
 			}
 
 			bool update_and_expand_size(size_t size) {
-				if (update_size(size)) { //at capacity
+				update_size(size);
+
+				if (cur_size_ > MaxSize) {
 					return true;
 				}
 
@@ -290,7 +292,7 @@ namespace wheel {
 				return is_chunked_;
 			}
 
-			int parse_header(std::size_t last_len, size_t start =0) {
+			int parse_header(std::size_t last_len, size_t start = 0) {
 				const char* method = nullptr;
 				size_t method_len = 0;
 				const char* url = nullptr;
@@ -328,7 +330,8 @@ namespace wheel {
 						is_chunked_ = true;
 
 						body_len_ = strlen(buffer_.c_str()) - header_len_;
-					}else {
+					}
+					else {
 						body_len_ = 0;
 					}
 				}
@@ -341,12 +344,12 @@ namespace wheel {
 					cookie_str_ = std::string(cookie.data(), cookie.length());
 				}
 
-				raw_url_ ={ url, url_len };
+				raw_url_ = { url, url_len };
 				size_t npos = raw_url_.find('/');
 				if (npos == std::string::npos) {
 					return -1;
 				}
-					
+
 				size_t pos = raw_url_.find('?');
 				if (pos != std::string::npos) {
 					queries_ = parse_query(std::string{ raw_url_ }.substr(pos + 1, url_len - pos - 1));
@@ -421,14 +424,10 @@ namespace wheel {
 				return {};
 			}
 
-			bool update_size(size_t size) {
+			void update_size(size_t size) {
 				cur_size_ += size;
-				if (cur_size_ > MaxSize) {
-					return true;
-				}
-
-				return false;
 			}
+
 			bool has_recieved_all_part() {
 				return (body_len_ == cur_size_ - header_len_);
 			}
@@ -471,7 +470,7 @@ namespace wheel {
 				multipart_headers_.clear();
 				client_chunked_data_.clear();
 
-				memset(&buffer_[0], 0,buffer_size());
+				memset(&buffer_[0], 0, buffer_size());
 			}
 
 			void set_multipart_headers(const multipart_headers& headers) {
@@ -616,7 +615,7 @@ namespace wheel {
 
 			std::map<std::string, std::string>get_cookies()const {
 				std::map<std::string, std::string> cookies;
-				if (!cookie_str_.empty()){
+				if (!cookie_str_.empty()) {
 					std::vector<std::string>cookies_vec;
 
 					wheel::unit::split(cookies_vec, cookie_str_, "; ");
@@ -654,7 +653,8 @@ namespace wheel {
 				gzip_str_.clear();
 				if (!is_chunked_) {
 					r = gzip_codec::uncompress(std::string(&buffer_[header_len_], body_len_), gzip_str_);
-				}else {
+				}
+				else {
 					r = gzip_codec::uncompress(client_chunked_data_, gzip_str_);
 				}
 #endif
@@ -669,6 +669,13 @@ namespace wheel {
 
 			void resize_double() {
 				size_t size = buffer_.size();
+				size_t double_size = (2 * size);
+				if (double_size > MaxSize) {
+					size = MaxSize;
+					resize(size);
+					return;
+				}
+
 				resize(2 * size);
 			}
 
@@ -735,7 +742,7 @@ namespace wheel {
 			std::string last_multpart_key_;
 			std::string part_data_;
 			data_proc_state state_ = data_proc_state::data_begin;
-			std ::string buffer_;
+			std::string buffer_;
 			size_t cur_size_ = 0;
 			int minor_version_;
 			int header_len_;
@@ -746,8 +753,8 @@ namespace wheel {
 			std::string method_str_;
 			std::string url_str_;
 			std::string gzip_str_;
-			//Æ´½ÓÆğÀ´µÄÊı¾İ
-			std::string client_chunked_data_; 
+			//æ‹¼æ¥èµ·æ¥çš„æ•°æ®
+			std::string client_chunked_data_;
 			std::vector<upload_file> files_;
 			std::unordered_map<std::string, std::string> multipart_headers_;
 			std::vector<std::pair<std::string, std::string>> copy_headers_;
