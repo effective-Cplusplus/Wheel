@@ -21,8 +21,8 @@ namespace wheel {
 		struct ssl_configure {
 			std::string cert_file;          //private cert
 			std::string key_file;           //private key
-			std::string passp_hrase;        //password;//Ë½ÓĞkey£¬ÊÇ·ñÊäÈëÃÜÂë
-			std::string pem_flie;           //*.pemÎÄ¼ş
+			std::string passp_hrase;        //password;//ç§æœ‰keyï¼Œæ˜¯å¦è¾“å…¥å¯†ç 
+			std::string pem_flie;           //*.pemæ–‡ä»¶
 		};
 
 		namespace fs = boost::filesystem;
@@ -219,21 +219,24 @@ namespace wheel {
 
 				boost::system::error_code ignored_ec;
 #ifdef WHEEL_ENABLE_SSL
-				ssl_socket_->lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
-
 				if (ssl_socket_->lowest_layer().is_open()) {
+					ssl_socket_->lowest_layer().shutdown(
+						boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
+
 					ssl_socket_->lowest_layer().close(ignored_ec);
 				}
 #else
-				socket_->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
 				if (socket_->is_open()) {
+					socket_->shutdown(
+						boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
+
 					socket_->close(ignored_ec);
 				}
 #endif
 			}
 
 			void release_session(const boost::system::error_code& ec) {
-				//shared_from_this²»ÄÜ±»µ÷Á½´Î
+				//shared_from_thisä¸èƒ½è¢«è°ƒä¸¤æ¬¡
 				if (close_observer_ == nullptr) {
 					return;
 				}
@@ -433,7 +436,7 @@ namespace wheel {
 			}
 
 			void do_read_octet_stream_body() {
-				//¼ÓÁËÕâ¸öbuffer²»»áÒç³ö
+				//åŠ äº†è¿™ä¸ªbufferä¸ä¼šæº¢å‡º
 				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()), boost::asio::transfer_exactly(request_->left_body_len()),
 					strand_->wrap([this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
@@ -458,7 +461,7 @@ namespace wheel {
 						}));
 			}
 
-			//ÎŞbodyÓ¦´ğ
+			//æ— bodyåº”ç­”
 			void handle_no_body_respone() {
 				if (request_->get_state() == data_proc_state::data_error) {
 					response_back(status_type::bad_request, "data_proc_state: data_error");
@@ -532,7 +535,7 @@ namespace wheel {
 					return;
 				}
 
-				//Êı¾İ
+				//æ•°æ®
 				if (ret == CHUNKED_IN_CHUNK_DATA) {
 					std::string context;
 					context.resize(size);
@@ -555,7 +558,7 @@ namespace wheel {
 			}
 
 			void read_chunk_data(int64_t read_len) {
-				//boost::asio::async_read:×¢Òâ²ÎÊıÌîĞ´,»á³¬³öÄÚ´æÔ½½ç
+				//boost::asio::async_read:æ³¨æ„å‚æ•°å¡«å†™,ä¼šè¶…å‡ºå†…å­˜è¶Šç•Œ
 				socket().async_read_some(boost::asio::buffer(request_->buffer(), read_len),strand_->wrap([this](const boost::system::error_code& ec, size_t bytes_transferred) {
 					if (ec) {
 						response_back(status_type::bad_request, "read chunked data failure");
@@ -576,7 +579,7 @@ namespace wheel {
 						return;
 					}
 
-					//Ò»Ö±ÊÜµ½ÍêÕûµÄÊı¾İÎ»ÖÃ
+					//ä¸€ç›´å—åˆ°å®Œæ•´çš„æ•°æ®ä½ç½®
 					if (ret == CHUNKED_IN_CHUNK_DATA) {
 						std::string context;
 						context.resize(size);
@@ -611,7 +614,7 @@ namespace wheel {
 						return;
 					}
 
-					//Ò»Ö±ÊÜµ½ÍêÕûµÄÊı¾İÎ»ÖÃ
+					//ä¸€ç›´å—åˆ°å®Œæ•´çš„æ•°æ®ä½ç½®
 					if (ret == CHUNKED_IN_CHUNK_DATA) {
 						std::string context;
 						context.resize(size);
@@ -626,7 +629,7 @@ namespace wheel {
 			}
 
 			void do_read_form_urlencoded() {
-				//¼ÓÁËÕâ¸öbuffer²»»áÒç³ö
+				//åŠ äº†è¿™ä¸ªbufferä¸ä¼šæº¢å‡º
 				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()), boost::asio::transfer_exactly(request_->left_body_len()),
 					strand_->wrap([this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
@@ -711,7 +714,7 @@ namespace wheel {
 
 			void do_read_multipart() {
 				request_->fit_size();
-				//boost::asio::transfer_exactly,¼ÓÁËÕâ¸öbuffer²»»áÒç³ö
+				//boost::asio::transfer_exactly,åŠ äº†è¿™ä¸ªbufferä¸ä¼šæº¢å‡º
 				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()), boost::asio::transfer_exactly(request_->left_body_len()),
 					strand_->wrap([this](boost::system::error_code ec, std::size_t length) {
 						if (ec) {
@@ -784,7 +787,7 @@ namespace wheel {
 			}
 
 			void do_read_body() {
-				//¼ÓÁËboost::asio::transfer_exactly ²»»á·¢ÉúbufferÊı×éÔ½½ç
+				//åŠ äº†boost::asio::transfer_exactly ä¸ä¼šå‘ç”Ÿbufferæ•°ç»„è¶Šç•Œ
 				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()), boost::asio::transfer_exactly(request_->left_body_len()),
 					strand_->wrap([this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
@@ -810,7 +813,7 @@ namespace wheel {
 				}
 
 				boost::system::error_code ec;
-				//¹Ø±ÕÅ£±ÆµÄËã·¨(nagleËã·¨),·ÀÖ¹TCPµÄÊı¾İ°üÔÚ±¥ÂúÊ±²Å·¢ËÍ¹ıÈ¥
+				//å…³é—­ç‰›é€¼çš„ç®—æ³•(nagleç®—æ³•),é˜²æ­¢TCPçš„æ•°æ®åŒ…åœ¨é¥±æ»¡æ—¶æ‰å‘é€è¿‡å»
 				boost::asio::ip::tcp::no_delay option(true);
 #ifdef WHEEL_ENABLE_SSL
 				ssl_socket_->lowest_layer().set_option(option);
@@ -818,8 +821,8 @@ namespace wheel {
 				socket_->set_option(option, ec);
 
 #endif
-				//ÓĞtime_wait×´Ì¬ÏÂ£¬¿É¶Ë¿Ú¶ÌÊ±¼ä¿ÉÒÔÖØÓÃ
-				//Ä¬ÈÏÊÇ2MSLÒ²¾ÍÊÇ (RFC793ÖĞ¹æ¶¨MSLÎª2·ÖÖÓ)Ò²¾ÍÊÇ4·ÖÖÓ
+				//æœ‰time_waitçŠ¶æ€ä¸‹ï¼Œå¯ç«¯å£çŸ­æ—¶é—´å¯ä»¥é‡ç”¨
+				//é»˜è®¤æ˜¯2MSLä¹Ÿå°±æ˜¯ (RFC793ä¸­è§„å®šMSLä¸º2åˆ†é’Ÿ)ä¹Ÿå°±æ˜¯4åˆ†é’Ÿ
 				set_reuse_address();
 			}
 
@@ -871,7 +874,7 @@ namespace wheel {
 						}));
 			}
 
-			/*********************´Ë½Ó¿ÚÔİÊ±Ã»ÓĞºóÃæ´ıÀ©Õ¹********************************/
+			/*********************æ­¤æ¥å£æš‚æ—¶æ²¡æœ‰åé¢å¾…æ‰©å±•********************************/
 			void do_chunked_write_body() {
 				std::list<std::string> buffers = response_->get_chunked_data();
 				if (buffers.empty()) {
@@ -897,7 +900,7 @@ namespace wheel {
 				}));
 			}
 
-			/*********************´Ë½Ó¿ÚÔİÊ±Ã»ÓĞºóÃæ´ıÀ©Õ¹********************************/
+			/*********************æ­¤æ¥å£æš‚æ—¶æ²¡æœ‰åé¢å¾…æ‰©å±•********************************/
 			void handler_chunked_write_body(std::list<std::string> buffers) {
 				const std::string data = buffers.front();
 				buffers.pop_front();
