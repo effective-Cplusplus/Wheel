@@ -109,7 +109,8 @@ namespace wheel {
 					| boost::asio::ssl::context::no_sslv2
 					| boost::asio::ssl::context::single_dh_use;
 				try {
-					boost::asio::ssl::context ssl_context(boost::asio::ssl::context::sslv23);
+					boost::asio::ssl::context ssl_context(boost::asio::ssl::context::tlsv12);
+					//boost::asio::ssl::context ssl_context(boost::asio::ssl::context::sslv23);
 					ssl_context.set_options(ssl_options);
 					if (!ssl_conf.passp_hrase.empty()) {
 						ssl_context.set_password_callback([ssl_conf](size_t, boost::asio::ssl::context_base::password_purpose) {return ssl_conf.passp_hrase; });

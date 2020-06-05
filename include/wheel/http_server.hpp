@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <thread>
-#include <atomic>
+//#include <atomic>
 #include <unordered_map>
 #include "http_tcp_handle.hpp"
 #include "http_router.hpp"
@@ -147,20 +147,20 @@ namespace wheel {
 
 				std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
 				std::time_t timestamp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count();
-				while (lock_.test_and_set(std::memory_order_acquire));
+				//while (lock_.test_and_set(std::memory_order_acquire));
 				connects_.emplace(handler, timestamp);
 
-				lock_.clear(std::memory_order_release);
+			//	lock_.clear(std::memory_order_release);
 			}
 
 			void on_close(std::shared_ptr<wheel::http_servers::http_tcp_handle> handler, const boost::system::error_code& ec) {
-				while (lock_.test_and_set(std::memory_order_acquire));
+				//while (lock_.test_and_set(std::memory_order_acquire));
 				auto iter_find = connects_.find(handler);
 				if (iter_find != connects_.end()) {
 					connects_.erase(iter_find);
 				}
 
-				lock_.clear(std::memory_order_release);
+				//lock_.clear(std::memory_order_release);
 			}
 		private:
 			bool need_response_time_ = false;
@@ -168,7 +168,7 @@ namespace wheel {
 			std::string upload_dir_ = fs::absolute("www").string(); //default
 			http_handler http_handler_;
 			http_router http_router_;
-			std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
+			//std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
 			std::unordered_map<std::shared_ptr<wheel::http_servers::http_tcp_handle>, std::time_t>connects_;
 			std::unique_ptr<boost::asio::ip::tcp::acceptor> accept_{};
 			std::shared_ptr<boost::asio::io_service::strand>strand_;
