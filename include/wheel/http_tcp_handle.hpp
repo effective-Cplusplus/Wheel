@@ -222,14 +222,14 @@ namespace wheel {
 					ssl_socket_->lowest_layer().shutdown(
 						boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
 
-					ssl_socket_->lowest_layer().close(ignored_ec);
+					//ssl_socket_->lowest_layer().close(ignored_ec);//不关闭，提升性能,不存在内存泄漏
 				}
 #else
 				if (socket_->is_open()) {
 					socket_->shutdown(
 						boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
 
-					socket_->close(ignored_ec);
+					//socket_->close(ignored_ec);//不关闭，提升性能,不存在内存泄漏
 				}
 #endif
 			}
