@@ -813,10 +813,14 @@ namespace wheel {
 				boost::system::error_code ec;
 				//关闭牛逼的算法(nagle算法),防止TCP的数据包在饱满时才发送过去
 				boost::asio::ip::tcp::no_delay option(true);
+				//快速关闭,提高高并发
+				boost::asio::socket_base::linger linger_option(true,1);
 #ifdef WHEEL_ENABLE_SSL
-				ssl_socket_->lowest_layer().set_option(option);
+				ssl_socket_->lowest_layer().set_option(option,ec);
+				ssl_socket_->lowest_layer().set_option(linger_option, ec);
 #else
 				socket_->set_option(option, ec);
+				socket_->set_option(linger_option, ec);
 
 #endif
 				//有time_wait状态下，可端口短时间可以重用
