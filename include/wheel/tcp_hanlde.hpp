@@ -109,7 +109,7 @@ namespace wheel {
 					return -1;
 				}
 
-				//Ö´ĞĞ²Ù×÷Ö®ºó£¬»áÄ£Äâ½øÈë¿Í»§¶Ë¹Ø±ÕsocketµÄ²Ù×÷
+				//æ‰§è¡Œæ“ä½œä¹‹åï¼Œä¼šæ¨¡æ‹Ÿè¿›å…¥å®¢æˆ·ç«¯å…³é—­socketçš„æ“ä½œ
 				boost::system::error_code ec;
 				socket_->shutdown(TCP::socket::shutdown_receive, ec);
 				return ec.value();
@@ -139,8 +139,8 @@ namespace wheel {
 					return -1;
 				}
 
-				//Èç¹ûÏÂÒ»¸ö°üÀ´£¬¾Í¿ÉÒÔ·ÅÔÚÄ©Î²·¢£¬¿ÉÒÔÀûÓÃµ±Ç°µÄÄÚ´æ£¬´ïµ½Ğ´¶àÉÙ£¬·¢¶àÉÙµÄĞ§¹û
-				//×îºÃ¼ÏËø
+				//å¦‚æœä¸‹ä¸€ä¸ªåŒ…æ¥ï¼Œå°±å¯ä»¥æ”¾åœ¨æœ«å°¾å‘ï¼Œå¯ä»¥åˆ©ç”¨å½“å‰çš„å†…å­˜ï¼Œè¾¾åˆ°å†™å¤šå°‘ï¼Œå‘å¤šå°‘çš„æ•ˆæœ
+				//æœ€å¥½æ·é”
 				std::shared_ptr<send_buffer>ptr = nullptr;
 				while (data_lock_.test_and_set(std::memory_order_acquire));
 				if (!send_buffers_.empty()) {
@@ -175,10 +175,10 @@ namespace wheel {
 
 				data_lock_.clear(std::memory_order_release);
 				if (write_count_ == 0) {
-					++write_count_;//1:µÈÓÚ0¾ÍÏà¼Ó£¬2:Èô´Ë±äÁ¿Îª1£¬ËµÃ÷ÓĞ´íÎó 
+					++write_count_;//1:ç­‰äº0å°±ç›¸åŠ ï¼Œ2:è‹¥æ­¤å˜é‡ä¸º1ï¼Œè¯´æ˜æœ‰é”™è¯¯ 
 
-					//×ÔÓÉº¯Êıboost::asio::async_write Èç¹ûÖ¸¶¨bufferµÄlengthÃ»ÓĞĞ´Íê»ò³ö´í»áÔÚrun loopÖĞÒ»Ö±Ö´ĞĞ
-					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()), std::bind(&tcp_handle::on_write, this,
+					//è‡ªç”±å‡½æ•°boost::asio::async_write å¦‚æœæŒ‡å®šbufferçš„lengthæ²¡æœ‰å†™å®Œæˆ–å‡ºé”™ä¼šåœ¨run loopä¸­ä¸€ç›´æ‰§è¡Œ
+					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()), std::bind(&tcp_handle::on_write, shared_from_this(),
 						std::placeholders::_1, std::placeholders::_2));
 				}
 
@@ -210,24 +210,24 @@ namespace wheel {
 				return err.value();
 			}
 
-			//¿Í»§¶ËÖ§³ÖÒì²½ÖØÁ¬
+			//å®¢æˆ·ç«¯æ”¯æŒå¼‚æ­¥é‡è¿
 			void reconect_server(std::string ip, int port, MessageEventObserver recv_observer, CloseEventObserver  close_observer) {
 				if (timer_ == nullptr){
 					return;
 				}
 
 				timer_->expires_from_now(std::chrono::seconds(seconds_));
-				timer_->async_wait(strand_->wrap([this, ip, port, recv_observer, close_observer](const boost::system::error_code& ec) {
+				timer_->async_wait(strand_->wrap([self = shared_from_this(), ip, port, recv_observer, close_observer](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
 
-					if (connect_status_ == connectinged) {
+					if (self->connect_status_ == connectinged) {
 						return;
 					}
 
-					async_connect(ip, port, recv_observer, close_observer);
-					reconect_server(ip, port, recv_observer, close_observer);
+					self->async_connect(ip, port, recv_observer, close_observer);
+					self->reconect_server(ip, port, recv_observer, close_observer);
 					}));
 			}
 
@@ -290,17 +290,17 @@ namespace wheel {
 
 				boost::system::error_code ec;
 
-				///net.core.rmem_max, ´óÓÚÕâ¸öÏµÊıÖµµÄ»°£¬¾ÍµÃÏÈĞŞ¸ÄÕâ¸öÏµÍ³²ÎÊıÁË
-				//net.core.rmem_default Ä¬ÈÏ´óĞ¡
-				//	/proc/sys/net/ipv4/tcp_window_scaling	"1"	ÆôÓÃ RFC 1323 ¶¨ÒåµÄ window scaling£»ÒªÖ§³Ö³¬¹ı 64KB µÄ´°¿Ú£¬±ØĞëÆôÓÃ¸ÃÖµ¡£
-				// ÏµÍ³¸ù¾İ¸ºÔØ£¬ÔÚÕâÈı¸öÖµÖ®¼äµ÷ÕûSOCKET´°¿Ú´óĞ¡
+				///net.core.rmem_max, å¤§äºè¿™ä¸ªç³»æ•°å€¼çš„è¯ï¼Œå°±å¾—å…ˆä¿®æ”¹è¿™ä¸ªç³»ç»Ÿå‚æ•°äº†
+				//net.core.rmem_default é»˜è®¤å¤§å°
+				//	/proc/sys/net/ipv4/tcp_window_scaling	"1"	å¯ç”¨ RFC 1323 å®šä¹‰çš„ window scalingï¼›è¦æ”¯æŒè¶…è¿‡ 64KB çš„çª—å£ï¼Œå¿…é¡»å¯ç”¨è¯¥å€¼ã€‚
+				// ç³»ç»Ÿæ ¹æ®è´Ÿè½½ï¼Œåœ¨è¿™ä¸‰ä¸ªå€¼ä¹‹é—´è°ƒæ•´SOCKETçª—å£å¤§å°
 				// net.ipv4.tcp_wmem = 4096	16384	4194304
 				// net.ipv4.tcp_rmem = 4096	87380	4194304
 
-				// 	/proc/sys/net/ipv4/tcp_wmem	"4096 16384 131072"	Îª×Ô¶¯µ÷ÓÅ¶¨ÒåÃ¿¸ö socket Ê¹ÓÃµÄÄÚ´æ¡£
-				// 		µÚÒ»¸öÖµÊÇÎª socket µÄ·¢ËÍ»º³åÇø·ÖÅäµÄ×îÉÙ×Ö½ÚÊı¡£
-				// 		µÚ¶ş¸öÖµÊÇÄ¬ÈÏÖµ£¨¸ÃÖµ»á±» wmem_default ¸²¸Ç£©£¬»º³åÇøÔÚÏµÍ³¸ºÔØ²»ÖØµÄÇé¿öÏÂ¿ÉÒÔÔö³¤µ½Õâ¸öÖµ¡£
-				// 		µÚÈı¸öÖµÊÇ·¢ËÍ»º³åÇø¿Õ¼äµÄ×î´ó×Ö½ÚÊı£¨¸ÃÖµ»á±» wmem_max ¸²¸Ç£©¡£
+				// 	/proc/sys/net/ipv4/tcp_wmem	"4096 16384 131072"	ä¸ºè‡ªåŠ¨è°ƒä¼˜å®šä¹‰æ¯ä¸ª socket ä½¿ç”¨çš„å†…å­˜ã€‚
+				// 		ç¬¬ä¸€ä¸ªå€¼æ˜¯ä¸º socket çš„å‘é€ç¼“å†²åŒºåˆ†é…çš„æœ€å°‘å­—èŠ‚æ•°ã€‚
+				// 		ç¬¬äºŒä¸ªå€¼æ˜¯é»˜è®¤å€¼ï¼ˆè¯¥å€¼ä¼šè¢« wmem_default è¦†ç›–ï¼‰ï¼Œç¼“å†²åŒºåœ¨ç³»ç»Ÿè´Ÿè½½ä¸é‡çš„æƒ…å†µä¸‹å¯ä»¥å¢é•¿åˆ°è¿™ä¸ªå€¼ã€‚
+				// 		ç¬¬ä¸‰ä¸ªå€¼æ˜¯å‘é€ç¼“å†²åŒºç©ºé—´çš„æœ€å¤§å­—èŠ‚æ•°ï¼ˆè¯¥å€¼ä¼šè¢« wmem_max è¦†ç›–ï¼‰ã€‚
 
 				if (force == true) {
 					boost::asio::socket_base::receive_buffer_size  rs(size);
@@ -326,8 +326,8 @@ namespace wheel {
 				}
 				boost::system::error_code ec;
 
-				///net.core.wmem_max, ´óÓÚÕâ¸öÏµÊıÖµµÄ»°£¬¾ÍµÃÏÈĞŞ¸ÄÕâ¸öÏµÍ³²ÎÊıÁË
-				//net.core.wmem_default Ä¬ÈÏ´óĞ¡
+				///net.core.wmem_max, å¤§äºè¿™ä¸ªç³»æ•°å€¼çš„è¯ï¼Œå°±å¾—å…ˆä¿®æ”¹è¿™ä¸ªç³»ç»Ÿå‚æ•°äº†
+				//net.core.wmem_default é»˜è®¤å¤§å°
 				if (force == true){
 					boost::asio::socket_base::send_buffer_size op(send_buffer_size);
 					socket_->set_option(op, ec);
@@ -346,11 +346,15 @@ namespace wheel {
 		private:
 			void init() {
 				boost::system::error_code ec;
-				//¹Ø±ÕÅ£±ÆµÄËã·¨(nagleËã·¨),·ÀÖ¹TCPµÄÊı¾İ°üÔÚ±¥ÂúÊ±²Å·¢ËÍ¹ıÈ¥
+				//å…³é—­ç‰›é€¼çš„ç®—æ³•(nagleç®—æ³•),é˜²æ­¢TCPçš„æ•°æ®åŒ…åœ¨é¥±æ»¡æ—¶æ‰å‘é€è¿‡å»
 				socket_->set_option(boost::asio::ip::tcp::no_delay(true), ec);
 
-				//ÓĞtime_wait×´Ì¬ÏÂ£¬¿É¶Ë¿Ú¶ÌÊ±¼ä¿ÉÒÔÖØÓÃ
-				//Ä¬ÈÏÊÇ2MSLÒ²¾ÍÊÇ (RFC793ÖĞ¹æ¶¨MSLÎª2·ÖÖÓ)Ò²¾ÍÊÇ4·ÖÖÓ
+				//å¿«é€Ÿå…³é—­,æé«˜é«˜å¹¶å‘
+				boost::asio::socket_base::linger linger_option(true, 1);
+
+				socket_->set_option(linger_option, ec);
+				//æœ‰time_waitçŠ¶æ€ä¸‹ï¼Œå¯ç«¯å£çŸ­æ—¶é—´å¯ä»¥é‡ç”¨
+				//é»˜è®¤æ˜¯2MSLä¹Ÿå°±æ˜¯ (RFC793ä¸­è§„å®šMSLä¸º2åˆ†é’Ÿ)ä¹Ÿå°±æ˜¯4åˆ†é’Ÿ
 				set_reuse_address();	
 			}
 
@@ -380,25 +384,25 @@ namespace wheel {
 					return;
 				}
 
-				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0],g_packet_buffer_size), strand_->wrap([this](const boost::system::error_code ec, size_t bytes_transferred) {
+				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0],g_packet_buffer_size), strand_->wrap([self = shared_from_this()](const boost::system::error_code ec, size_t bytes_transferred) {
 					if (ec){
-						if (this->get_connect_status() == disconnect) {
+						if (self->get_connect_status() == disconnect) {
 							return;
 						}
 
-						set_connect_status(disconnect);
-						close_socket();
-						close_observer_(shared_from_this(), ec);
+						self->set_connect_status(disconnect);
+						self->close_socket();
+						self->close_observer_(self, ec);
 						return;
 					}
 
 					streams steams;
-					protocol_parser_->read_stream(&recv_buffer_[0], bytes_transferred, steams);;
+					self->protocol_parser_->read_stream(&self->recv_buffer_[0], bytes_transferred, steams);;
 					for (const std::shared_ptr<native_stream> stream : steams) {
-						recv_observer_(shared_from_this(), stream);
+						self->recv_observer_(self, stream);
 					}
 
-					to_read();
+					self->to_read();
 					}));
 			}
 			void async_connect(std::string ip, int port, const MessageEventObserver& recv_observer, const CloseEventObserver& close_observer) {
@@ -406,26 +410,26 @@ namespace wheel {
 					return;
 				}
 
-				socket_->async_connect(TCP::endpoint(ADDRESS::from_string(ip), port), strand_->wrap([this, recv_observer, close_observer](const boost::system::error_code& ec) {
+				socket_->async_connect(TCP::endpoint(ADDRESS::from_string(ip), port), strand_->wrap([self = shared_from_this(), recv_observer, close_observer](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
 
-					set_connect_status(connectinged);
-					register_close_observer(close_observer);
-					register_recv_observer(recv_observer);
-					to_read();
+					self->set_connect_status(connectinged);
+					self->register_close_observer(close_observer);
+					self->register_recv_observer(recv_observer);
+					self->to_read();
 					}));
 			}
 			void on_write(const boost::system::error_code& ec, std::size_t size) {
 				--write_count_;
 
 				if (ec) {
-					//ÕâµØ·½²»ÄÜÉ¾³ıconencts,Ó¦¸ÃÖ±½ÓÍ¨Öª·¢ËÍ´íÎó
+					//è¿™åœ°æ–¹ä¸èƒ½åˆ é™¤conencts,åº”è¯¥ç›´æ¥é€šçŸ¥å‘é€é”™è¯¯
 					return;
 				}
 
-				//×îºÃ¼ÓËø×ÅµØ·½
+				//æœ€å¥½åŠ é”ç€åœ°æ–¹
 				while (data_lock_.test_and_set(std::memory_order_acquire));
 				if (send_buffers_.empty()) {
 					data_lock_.clear(std::memory_order_release);
@@ -440,11 +444,11 @@ namespace wheel {
 				}
 
 				if (!send_buffers_.empty()) {
-					//ÕâÑùĞ´£¬»áÈÃwrite_count_ ¶à¼ÓÒ»¸ö1
+					//è¿™æ ·å†™ï¼Œä¼šè®©write_count_ å¤šåŠ ä¸€ä¸ª1
 					//to_send(send_buffers.front()->data(), send_buffers.front()->size());
 
-					//ÓĞ°ü¾Í¼ÌĞø·¢,²»¹ÜÀ´¶àÉÙ£¬·¢¶àÉÙ
-					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()), strand_->wrap(std::bind(&tcp_handle::on_write, this,
+					//æœ‰åŒ…å°±ç»§ç»­å‘,ä¸ç®¡æ¥å¤šå°‘ï¼Œå‘å¤šå°‘
+					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()), strand_->wrap(std::bind(&tcp_handle::on_write, shared_from_this(),
 						std::placeholders::_1, std::placeholders::_2)));
 					++write_count_;
 				}
@@ -471,8 +475,8 @@ namespace wheel {
 		private:
 			std::atomic_flag data_lock_ = ATOMIC_FLAG_INIT;
 			int connect_status_ = disconnect;
-			int seconds_ = g_client_reconnect_seconds;//¿Í»§¶ËÉèÖÃÖØÁ¬
-			int parser_type_ = 0; //ºóĞøÀ©Õ¹0:¶ş½øÖÆÁ÷
+			int seconds_ = g_client_reconnect_seconds;//å®¢æˆ·ç«¯è®¾ç½®é‡è¿
+			int parser_type_ = 0; //åç»­æ‰©å±•0:äºŒè¿›åˆ¶æµ
 			std::size_t header_size_;
 			std::size_t packet_size_offset_;
 			std::size_t packet_cmd_offset_;
