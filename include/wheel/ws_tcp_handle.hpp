@@ -140,7 +140,9 @@ namespace wheel {
 				}
 
 				boost::system::error_code e;
-				socket_->close(e);
+				//socket_->close(e);
+				socket_->shutdown(
+						boost::asio::ip::tcp::socket::shutdown_both, e);
 				return e.value();
 			}
 
