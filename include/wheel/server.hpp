@@ -2,7 +2,7 @@
 #define sever_h__
 
 #include <unordered_map>
-#include <atomic>
+//#include <atomic>
 
 
 namespace wheel {
@@ -54,14 +54,14 @@ namespace wheel {
 				boost::system::error_code ec;
 				accept_ = wheel::traits::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_poll::get_instance().get_io_service());
 				
-				//Ò»¶¨Òªµ÷ÓÃopen·ñÔò»á¼àÌýÊ§°Ü
+				//ä¸€å®šè¦è°ƒç”¨openå¦åˆ™ä¼šç›‘å¬å¤±è´¥
 				accept_->open(boost::asio::ip::tcp::v4());
-				//¶Ë¿Ú¸´ÓÃ
+				//ç«¯å£å¤ç”¨
 				accept_->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), ec);
 				accept_->bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port), ec);
 				accept_->listen(boost::asio::socket_base::max_connections, ec);
 				if (ec) {
-					std::cout << "·þÎñÆ÷¼àÌýÊ§°Ü:" << ec.message() << std::endl;
+					std::cout << "æœåŠ¡å™¨ç›‘å¬å¤±è´¥:" << ec.message() << std::endl;
 					return;
 				}
 
@@ -115,7 +115,7 @@ namespace wheel {
 				new_session->register_connect_observer(std::bind(&server::on_connect, this, std::placeholders::_1));
 				new_session->register_recv_observer(recv_observer_);
 
-				//·¢Ò»´ÎÊý¾Ý½ÓÊÕÒ»´Î
+				//å‘ä¸€æ¬¡æ•°æ®æŽ¥æ”¶ä¸€æ¬¡
 				accept_->async_accept(*new_session->get_socket(), [this, new_session](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
@@ -126,7 +126,7 @@ namespace wheel {
 					});
 			}
 			void join_all() {
-				//¼ÓÈëÖ®ºóÐèÒªµÈ´ý,±ÜÃâÏß³Ì²»»ØÊÕ
+				//åŠ å…¥ä¹‹åŽéœ€è¦ç­‰å¾…,é¿å…çº¿ç¨‹ä¸å›žæ”¶
 				for (auto& t : ios_threads_) {
 					if (!t->joinable()) {
 						t->join();
@@ -146,25 +146,25 @@ namespace wheel {
 
 				std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
 				std::time_t timestamp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count();
-				while (lock_.test_and_set(std::memory_order_acquire));
+				//while (lock_.test_and_set(std::memory_order_acquire));
 				connects_.emplace(handler, timestamp);
 
-				lock_.clear(std::memory_order_release);
+				//lock_.clear(std::memory_order_release);
 			}
 
 			void on_close(std::shared_ptr<wheel::tcp_socket::tcp_handle> handler, const boost::system::error_code& ec) {
-				//tcpÖ÷¶¯¶Ï¿ª boost::asio::error::connection_reset
-				//websocketÖ÷¶¯¶Ï¿ª  boost::asio::error::connection_aborted
-				while (lock_.test_and_set(std::memory_order_acquire));
+				//tcpä¸»åŠ¨æ–­å¼€ boost::asio::error::connection_reset
+				//websocketä¸»åŠ¨æ–­å¼€  boost::asio::error::connection_aborted
+				//while (lock_.test_and_set(std::memory_order_acquire));
 				auto iter_find = connects_.find(handler);
 				if (iter_find != connects_.end()) {
 					connects_.erase(iter_find);
 				}
 
-				lock_.clear(std::memory_order_release);
+				//lock_.clear(std::memory_order_release);
 			}
 		private:
-			std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
+			//std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
 			int parser_type_ = 0;
 			std::size_t header_size_ = 0;
 			std::size_t packet_size_offset_ = 0;
