@@ -2,19 +2,19 @@
 #define websocket_server_h__
 #include "ws_tcp_handle.hpp"
 #include <unordered_map>
-#include <atomic>
+//#include <atomic>
 
 namespace wheel {
 	namespace websocket {
 		enum wes_paser_type
 		{
-			json = 0,//Ä¬ÈÏÊÇJSON
+			json = 0,//é»˜è®¤æ˜¯JSON
 			bin = 1,
 		};
 
 		class websocket_server {
 		public:
-			//json ×Ö·û´®
+			//json å­—ç¬¦ä¸²
 			websocket_server(const MessageEventObserver& recv_observer)
 				:recv_observer_(recv_observer) {
 				try
@@ -28,7 +28,7 @@ namespace wheel {
 				}
 			}
 
-			//¶ş½øÖÆÁ÷µÄ¸ñÊ½
+			//äºŒè¿›åˆ¶æµçš„æ ¼å¼
 			websocket_server(const MessageEventObserver& recv_observer, int parser_type, std::size_t header_size,
 				std::size_t packet_size_offset, std::size_t packet_cmd_offset)
 				:recv_observer_(recv_observer), parser_type_(parser_type)
@@ -60,14 +60,14 @@ namespace wheel {
 				boost::system::error_code ec;
 				accept_ = wheel::traits::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_poll::get_instance().get_io_service());
 				
-				//Ò»¶¨Òªµ÷ÓÃopen·ñÔò»á¼àÌıÊ§°Ü
+				//ä¸€å®šè¦è°ƒç”¨openå¦åˆ™ä¼šç›‘å¬å¤±è´¥
 				accept_->open(boost::asio::ip::tcp::v4());
-				//¶Ë¿Ú¸´ÓÃ
+				//ç«¯å£å¤ç”¨
 				accept_->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), ec);
 				accept_->bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port), ec);
 				accept_->listen(boost::asio::socket_base::max_connections, ec);
 				if (ec) {
-					std::cout << "·şÎñÆ÷¼àÌıÊ§°Ü:" << ec.message() << std::endl;
+					std::cout << "æœåŠ¡å™¨ç›‘å¬å¤±è´¥:" << ec.message() << std::endl;
 					return;
 				}
 
@@ -124,7 +124,7 @@ namespace wheel {
 				new_session->register_connect_observer(std::bind(&websocket_server::on_connect, this, std::placeholders::_1));
 				new_session->register_recv_observer(recv_observer_);
 
-				//·¢Ò»´ÎÊı¾İ½ÓÊÕÒ»´Î
+				//å‘ä¸€æ¬¡æ•°æ®æ¥æ”¶ä¸€æ¬¡
 				accept_->async_accept(*new_session->get_socket(), [this, new_session](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
@@ -136,7 +136,7 @@ namespace wheel {
 			}
 			
 			void join_all() {
-				//¼ÓÈëÖ®ºóĞèÒªµÈ´ı,±ÜÃâÏß³Ì²»»ØÊÕ
+				//åŠ å…¥ä¹‹åéœ€è¦ç­‰å¾…,é¿å…çº¿ç¨‹ä¸å›æ”¶
 				for (auto& t : ios_threads_) {
 					if (!t->joinable()) {
 						t->join();
@@ -157,28 +157,28 @@ namespace wheel {
 				std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
 				std::time_t timestamp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count();
 
-				lock_.test_and_set(std::memory_order_acquire);
+				//lock_.test_and_set(std::memory_order_acquire);
 				connects_.emplace(handler, timestamp);
-				lock_.clear(std::memory_order_release);
+				//lock_.clear(std::memory_order_release);
 			}
 
 			void on_close(std::shared_ptr<ws_tcp_handle> handler, const boost::system::error_code& ec) {
-				//tcpÖ÷¶¯¶Ï¿ª boost::asio::error::connection_reset
-				//websocketÖ÷¶¯¶Ï¿ª  boost::asio::error::connection_aborted
-				lock_.test_and_set(std::memory_order_acquire);
+				//tcpä¸»åŠ¨æ–­å¼€ boost::asio::error::connection_reset
+				//websocketä¸»åŠ¨æ–­å¼€  boost::asio::error::connection_aborted
+				//lock_.test_and_set(std::memory_order_acquire);
 				auto iter_find = connects_.find(handler);
 				if (iter_find != connects_.end()) {
 					connects_.erase(iter_find);
 				}
 
-				lock_.clear(std::memory_order_release);
+				//lock_.clear(std::memory_order_release);
 			}
 		private:
 			int parser_type_ = json;
 			std::size_t header_size_ = 0;
 			std::size_t packet_size_offset_ = 0;
 			std::size_t packet_cmd_offset_ = 0;
-			std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
+			//std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
 			MessageEventObserver		recv_observer_;
 			std::unique_ptr<TCP::acceptor>accept_{};
 			std::vector<std::shared_ptr<std::thread>> ios_threads_;
