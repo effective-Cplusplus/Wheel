@@ -352,7 +352,7 @@ namespace wheel {
 				socket_->set_option(boost::asio::ip::tcp::no_delay(true), ec);
 
 				//快速关闭,提高高并发
-				boost::asio::socket_base::linger linger_option(true, 1);
+				boost::asio::socket_base::linger linger_option(true,0);
 
 				socket_->set_option(linger_option, ec);
 				//有time_wait状态下，可端口短时间可以重用
