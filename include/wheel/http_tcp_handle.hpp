@@ -86,12 +86,6 @@ namespace wheel {
 				multipart_begin_ = std::move(begin);
 			}
 
-			void dispatch_async_handshake() {
-#ifdef WHEEL_ENABLE_SSL   
-				//异步投递，可以不用wrap,同步,(否则会影响服务器吞吐量)
-				boost::asio::dispatch(ssl_socket_->get_executor(), std::bind(&http_tcp_handle::async_handshake, shared_from_this()));
-#endif
-			}
 		private:
 			bool check_argument() {
 #ifdef WHEEL_ENABLE_SSL
@@ -169,7 +163,7 @@ namespace wheel {
 				request_->reset();
 				response_->reset();
 				if (is_ssl_ && !has_shake_) {
-					dispatch_async_handshake();
+					async_handshake();
 				}else {
 					async_read_some();
 				}
@@ -221,8 +215,8 @@ namespace wheel {
 
 				boost::system::error_code ignored_ec;
 #ifdef WHEEL_ENABLE_SSL
-				if (ssl_socket_->lowest_layer().is_open()) {
-					ssl_socket_->lowest_layer().shutdown(
+				if (ssl_socket_->next_layer().is_open()) {
+					ssl_socket_->next_layer().shutdown(
 						boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
 
 					//ssl_socket_->lowest_layer().close(ignored_ec);//不关闭，提升性能,不存在内存泄漏
@@ -819,8 +813,8 @@ namespace wheel {
 				//快速关闭,提高高并发
 				boost::asio::socket_base::linger linger_option(true,1);
 #ifdef WHEEL_ENABLE_SSL
-				ssl_socket_->lowest_layer().set_option(option,ec);
-				ssl_socket_->lowest_layer().set_option(linger_option, ec);
+				ssl_socket_->next_layer().set_option(option,ec);
+				ssl_socket_->next_layer().set_option(linger_option, ec);
 #else
 				socket_->set_option(option, ec);
 				socket_->set_option(linger_option, ec);
@@ -835,7 +829,7 @@ namespace wheel {
 				boost::system::error_code ec;
 				boost::asio::socket_base::reuse_address readdress(true);
 #ifdef WHEEL_ENABLE_SSL
-				ssl_socket_->lowest_layer().set_option(readdress, ec);
+				ssl_socket_->next_layer().set_option(readdress, ec);
 #else
 				socket_->set_option(readdress, ec);
 #endif
