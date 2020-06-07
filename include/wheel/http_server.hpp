@@ -112,7 +112,6 @@ namespace wheel {
 						return;
 					}
 
-					new_session->dispatch_async_handshake();
 					new_session->activate();
 					make_session();
 					}));
