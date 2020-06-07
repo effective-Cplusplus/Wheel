@@ -174,8 +174,6 @@ namespace wheel {
 			void async_handshake() {
 #ifdef WHEEL_ENABLE_SSL     
 				if (ssl_socket_ == nullptr) {
-					release_session(boost::asio::error::make_error_code(
-						static_cast<boost::asio::error::basic_errors>(boost::system::errc::invalid_argument)));
 					return;
 				}
 
