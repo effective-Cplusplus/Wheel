@@ -164,7 +164,9 @@ namespace wheel {
 				response_->reset();
 
 				if (is_ssl_ && !has_shake_) {
+#ifdef WHEEL_ENABLE_SSL   
 					boost::asio::dispatch(ssl_socket_->get_executor(),std::bind(&http_tcp_handle::async_handshake, shared_from_this()));
+#endif
 				}
 				else {
 					async_read_some();
