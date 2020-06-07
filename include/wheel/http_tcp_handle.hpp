@@ -49,6 +49,8 @@ namespace wheel {
 					exit(0);
 				}
 #endif
+
+				init();
 				init_multipart_parser();
 			}
 
@@ -67,7 +69,7 @@ namespace wheel {
 			void activate() {
 				connect_observer_(shared_from_this());
 				response_->enable_response_time(need_response_time_);
-				init();
+		
 				do_read();
 			}
 
@@ -181,7 +183,7 @@ namespace wheel {
 					if (error) {
 						self->release_session(boost::asio::error::make_error_code(
 							static_cast<boost::asio::error::basic_errors>(error.value())));
-						//std::cout << error.message() << std::endl;
+						std::cout << error.message() << std::endl;
 
 						self->has_shake_ = false;
 						return;
