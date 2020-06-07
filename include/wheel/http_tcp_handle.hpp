@@ -165,7 +165,7 @@ namespace wheel {
 
 				if (is_ssl_ && !has_shake_) {
 #ifdef WHEEL_ENABLE_SSL   
-					//异步投递，可以不用wrap,同步
+					//异步投递，可以不用wrap,同步,(否则会影响服务器吞吐量)
 					boost::asio::dispatch(ssl_socket_->get_executor(),std::bind(&http_tcp_handle::async_handshake, shared_from_this()));
 #endif
 				}
