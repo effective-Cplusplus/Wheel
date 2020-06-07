@@ -104,14 +104,15 @@ namespace wheel {
 					return;
 				}
 
+				new_session->register_close_observer(std::bind(&http_server::on_close, this, std::placeholders::_1, std::placeholders::_2));
+				new_session->register_connect_observer(std::bind(&http_server::on_connect, this, std::placeholders::_1));
 				//发一次数据接收一次
 				accept_->async_accept(*socket_ptr,strand_->wrap([this, new_session](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
 
-					new_session->register_close_observer(std::bind(&http_server::on_close, this, std::placeholders::_1, std::placeholders::_2));
-					new_session->register_connect_observer(std::bind(&http_server::on_connect, this, std::placeholders::_1));
+					new_session->dispatch_async_handshake();
 					new_session->activate();
 					make_session();
 					}));

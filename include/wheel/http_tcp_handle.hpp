@@ -70,7 +70,9 @@ namespace wheel {
 				connect_observer_(shared_from_this());
 				response_->enable_response_time(need_response_time_);
 		
-				do_read();
+				if (!is_ssl_){
+					do_read();
+				}
 			}
 
 			void register_connect_observer(ConnectEventObserver observer) {
@@ -82,6 +84,13 @@ namespace wheel {
 			}
 			void set_multipart_begin(std::function<void(request&, std::string&)> begin) {
 				multipart_begin_ = std::move(begin);
+			}
+
+			void dispatch_async_handshake() {
+#ifdef WHEEL_ENABLE_SSL   
+				//异步投递，可以不用wrap,同步,(否则会影响服务器吞吐量)
+				boost::asio::dispatch(ssl_socket_->get_executor(), std::bind(&http_tcp_handle::async_handshake, shared_from_this()));
+#endif
 			}
 		private:
 			bool check_argument() {
@@ -165,15 +174,7 @@ namespace wheel {
 				request_->reset();
 				response_->reset();
 
-				if (is_ssl_ && !has_shake_) {
-#ifdef WHEEL_ENABLE_SSL   
-					//异步投递，可以不用wrap,同步,(否则会影响服务器吞吐量)
-					boost::asio::dispatch(ssl_socket_->get_executor(),std::bind(&http_tcp_handle::async_handshake, shared_from_this()));
-#endif
-				}
-				else {
-					async_read_some();
-				}
+				async_read_some();
 			}
 
 			void async_handshake() {
@@ -193,7 +194,7 @@ namespace wheel {
 					}
 
 					self->has_shake_ = true;
-					self->async_read_some();
+					self->do_read();
 					});
 #endif
 			}
