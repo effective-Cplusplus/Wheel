@@ -813,7 +813,7 @@ namespace wheel {
 				//关闭牛逼的算法(nagle算法),防止TCP的数据包在饱满时才发送过去
 				boost::asio::ip::tcp::no_delay option(true);
 				//快速关闭,提高高并发
-				boost::asio::socket_base::linger linger_option(true,1);
+				boost::asio::socket_base::linger linger_option(true,0);
 #ifdef WHEEL_ENABLE_SSL
 				ssl_socket_->next_layer().set_option(option,ec);
 				ssl_socket_->next_layer().set_option(linger_option, ec);
