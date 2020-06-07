@@ -49,8 +49,6 @@ namespace wheel {
 					exit(0);
 				}
 #endif
-
-				init();
 				init_multipart_parser();
 			}
 
@@ -69,7 +67,8 @@ namespace wheel {
 			void activate() {
 				connect_observer_(shared_from_this());
 				response_->enable_response_time(need_response_time_);
-		
+				init();
+
 				if (!is_ssl_){
 					do_read();
 				}
