@@ -65,13 +65,14 @@ namespace wheel {
 			}
 
 			void activate() {
-				connect_observer_(shared_from_this());
-				response_->enable_response_time(need_response_time_);
-				init();
-
-				if (!is_ssl_){
-					do_read();
+				if (connect_observer_ == nullptr) {
+					return;
 				}
+
+				connect_observer_(shared_from_this());
+
+				init();
+				do_read();
 			}
 
 			void register_connect_observer(ConnectEventObserver observer) {
@@ -160,20 +161,18 @@ namespace wheel {
 			}
 #endif
 			void do_read() {
-				if (request_ == nullptr || response_ == nullptr) {
-					release_session(boost::asio::error::make_error_code(
-						static_cast<boost::asio::error::basic_errors>(boost::system::errc::invalid_argument)));
+				if (request_ == nullptr ||
+					response_ == nullptr) {
 					return;
 				}
 
-				len_ = 0;
-				last_transfer_ = 0;
-				is_receve_all_chunked = false;
-				req_content_type_ = content_type::unknown;
 				request_->reset();
 				response_->reset();
-
-				async_read_some();
+				if (is_ssl_ && !has_shake_) {
+					dispatch_async_handshake();
+				}else {
+					async_read_some();
+				}
 			}
 
 			void async_handshake() {
@@ -193,7 +192,7 @@ namespace wheel {
 					}
 
 					self->has_shake_ = true;
-					self->do_read();
+					self->async_read_some();
 					});
 #endif
 			}
