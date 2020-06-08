@@ -192,8 +192,6 @@ namespace wheel {
 							self->has_shake_ = false;
 							return;
 						}
-
-						return;
 					}
 
 					self->has_shake_ = true;
