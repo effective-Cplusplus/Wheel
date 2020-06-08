@@ -153,6 +153,8 @@ namespace wheel {
 					}
 
 					ssl_socket_ = std::make_unique<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(*io_service_poll::get_instance().get_io_service(), ssl_context);
+					//SSL_set_cipher_list(ssl_socket_->native_handle(), "eNULL");
+					//SSL_set_options(ssl_socket_->native_handle(), SSL_OP_NO_COMPRESSION);
 				}
 				catch (const std::exception & e) {
 					std::cout << e.what() << std::endl;
@@ -209,7 +211,7 @@ namespace wheel {
 					if (ec) {
 						self->release_session(boost::asio::error::make_error_code(
 							static_cast<boost::asio::error::basic_errors>(ec.value())));
-						//std::cout << ec.message() << std::endl;
+						std::cout << ec.message() << std::endl;
 
 						self->has_shake_ = false;
 						return;
@@ -231,14 +233,14 @@ namespace wheel {
 					socket_id.shutdown(
 						boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
 
-					//ssl_socket_->lowest_layer().close(ignored_ec);//不关闭，提升性能,不存在内存泄漏
+					socket_id.close(ignored_ec);
 				}
 #else
 				if (socket_->is_open()) {
 					socket_->shutdown(
 						boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
 
-					//socket_->close(ignored_ec);//不关闭，提升性能,不存在内存泄漏
+					socket_->close(ignored_ec);
 				}
 #endif
 			}
