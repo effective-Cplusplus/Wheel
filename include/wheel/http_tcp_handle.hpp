@@ -25,6 +25,13 @@ namespace wheel {
 			std::string pem_flie;           //*.pem文件
 		};
 
+		struct ssl_configure_data {
+			std::string cert_data;          //private cert
+			std::string key_data;           //private key
+			std::string passp_hrase_data;        //password;//私有key，是否输入密码
+			std::string pem_data;           //*.pem文件
+		};
+
 		namespace fs = boost::filesystem;
 		using http_handler = std::function<void(request&, response&)>;
 		class http_tcp_handle :public std::enable_shared_from_this<http_tcp_handle> {
@@ -35,7 +42,7 @@ namespace wheel {
 		public:
 			http_tcp_handle() = delete;
 			http_tcp_handle(const std::shared_ptr<boost::asio::io_service::strand>&strand,http_handler& handle,
-				const std::string& static_dir, const ssl_configure& ssl_conf, const bool need_response_time) :http_handler_(handle)
+				const std::string& static_dir, const ssl_configure_data& ssl_conf, const bool need_response_time) :http_handler_(handle)
 				,static_dir_(static_dir), need_response_time_(need_response_time), strand_(strand){
 #ifndef WHEEL_ENABLE_SSL 
 				socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*io_service_poll::get_instance().get_io_service());
@@ -109,7 +116,7 @@ namespace wheel {
 			}
 
 #ifdef WHEEL_ENABLE_SSL
-			bool init_ssl_context(const ssl_configure& ssl_conf) {
+			bool init_ssl_context(const ssl_configure_data& ssl_conf) {
 				unsigned long ssl_options = boost::asio::ssl::context::default_workarounds
 					| boost::asio::ssl::context::no_sslv3
 					|boost::asio::ssl::context::no_sslv2
@@ -119,29 +126,30 @@ namespace wheel {
 					//boost::asio::ssl::context ssl_context(boost::asio::ssl::context::tlsv13);//tsl1.3
 					//boost::asio::ssl::context ssl_context(boost::asio::ssl::context::sslv23);
 					ssl_context.set_options(ssl_options);
-					if (!ssl_conf.passp_hrase.empty()) {
-						ssl_context.set_password_callback([ssl_conf](size_t, boost::asio::ssl::context_base::password_purpose) {return ssl_conf.passp_hrase; });
+					if (!ssl_conf.passp_hrase_data.empty()) {
+						ssl_context.set_password_callback([ssl_conf](size_t, boost::asio::ssl::context_base::password_purpose) {return ssl_conf.passp_hrase_data; });
 					}
 
-					boost::system::error_code ec;
-					if (fs::exists(ssl_conf.cert_file, ec)) {
-						ssl_context.use_certificate_chain_file(std::move(ssl_conf.cert_file));
-					}
-					else {
+					if (!ssl_conf.cert_data.empty()){
+						ssl_context.use_certificate_chain(
+							boost::asio::buffer(ssl_conf.cert_data.data(), ssl_conf.cert_data.size()));
+					}else {
 						std::cout << "server.crt is empty" << std::endl;
 						return false;
 					}
 
-					if (fs::exists(ssl_conf.key_file, ec)) {
-						ssl_context.use_private_key_file(std::move(ssl_conf.key_file), boost::asio::ssl::context::pem);
-					}
-					else {
+					if (!ssl_conf.key_data.empty()){
+						ssl_context.use_private_key(
+							boost::asio::buffer(ssl_conf.key_data.data(), ssl_conf.key_data.size()),
+							boost::asio::ssl::context::file_format::pem);
+					}else {
 						std::cout << "server.key is empty" << std::endl;
 						return false;
 					}
 
-					if (fs::exists(ssl_conf.pem_flie, ec)) {
-						ssl_context.use_tmp_dh_file(std::move(ssl_conf.pem_flie));
+					if (!ssl_conf.pem_data.empty()){
+						ssl_context.use_tmp_dh(
+							boost::asio::buffer(ssl_conf.pem_data.data(), ssl_conf.pem_data.size()));
 					}
 
 					ssl_socket_ = std::make_unique<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(*io_service_poll::get_instance().get_io_service(), ssl_context);
@@ -164,8 +172,6 @@ namespace wheel {
 				response_->reset();
 				if (is_ssl_ && !has_shake_) {
 					async_handshake();
-					//boost::asio::dispatch(ssl_soWcket_->next_layer().get_executor(),
-					//	std::bind(&http_tcp_handle::async_handshake, shared_from_this()));
 				}else {
 					async_read_some();
 				}
@@ -179,10 +185,14 @@ namespace wheel {
 
 				ssl_socket_->async_handshake(boost::asio::ssl::stream_base::server, strand_->wrap([self = shared_from_this()](const boost::system::error_code& error) {
 					if (error) {
-						self->release_session(boost::asio::error::make_error_code(
-							static_cast<boost::asio::error::basic_errors>(error.value())));
-						std::cout << error.message() << std::endl;
-						self->has_shake_ = false;
+						if (error.value() != 336151574) {
+							self->release_session(boost::asio::error::make_error_code(
+								static_cast<boost::asio::error::basic_errors>(error.value())));
+							std::cout << "code:" << error.value() << "message:" << error.message() << std::endl;
+							self->has_shake_ = false;
+							return;
+						}
+
 						return;
 					}
 
