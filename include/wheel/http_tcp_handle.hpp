@@ -225,8 +225,10 @@ namespace wheel {
 
 				boost::system::error_code ignored_ec;
 #ifdef WHEEL_ENABLE_SSL
-				if (ssl_socket_->next_layer().is_open()) {
-					ssl_socket_->next_layer().shutdown(
+				auto& socket_id = ssl_socket_->next_layer();
+
+				if (socket_id.is_open()) {
+					socket_id.shutdown(
 						boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
 
 					//ssl_socket_->lowest_layer().close(ignored_ec);//不关闭，提升性能,不存在内存泄漏
@@ -823,8 +825,9 @@ namespace wheel {
 				//快速关闭,提高高并发
 				boost::asio::socket_base::linger linger_option(true,0);
 #ifdef WHEEL_ENABLE_SSL
-				ssl_socket_->next_layer().set_option(option,ec);
-				ssl_socket_->next_layer().set_option(linger_option, ec);
+				auto& socket_id = ssl_socket_->next_layer();
+				socket_id.set_option(option,ec);
+				socket_id.set_option(linger_option, ec);
 #else
 				socket_->set_option(option, ec);
 				socket_->set_option(linger_option, ec);
@@ -839,7 +842,8 @@ namespace wheel {
 				boost::system::error_code ec;
 				boost::asio::socket_base::reuse_address readdress(true);
 #ifdef WHEEL_ENABLE_SSL
-				ssl_socket_->next_layer().set_option(readdress, ec);
+				auto& socket_id = ssl_socket_->next_layer();
+				socket_id.set_option(readdress,ec);
 #else
 				socket_->set_option(readdress, ec);
 #endif
