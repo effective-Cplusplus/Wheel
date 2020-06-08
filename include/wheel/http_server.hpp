@@ -5,6 +5,7 @@
 #include <thread>
 //#include <atomic>
 #include <unordered_map>
+#include <fstream>
 #include "http_tcp_handle.hpp"
 #include "http_router.hpp"
 
@@ -64,6 +65,65 @@ namespace wheel {
 #ifdef WHEEL_ENABLE_SSL
 			void set_ssl_conf(ssl_configure conf) {
 				ssl_conf_ = std::move(conf);
+
+				boost::system::error_code ec;
+				if (fs::exists(ssl_conf_.cert_file, ec)) {
+					std::unique_ptr<std::ifstream>file_read =std::make_unique<std::ifstream>();
+
+					file_read->open(ssl_conf_.cert_file, std::ios::binary | std::ios::ate);
+					if (!file_read->is_open()) {
+						return;
+					}
+
+					std::string data;
+					std::size_t file_size = file_read->tellg();
+					data.resize(file_size);
+					file_read->seekg(0, std::ios::beg);
+
+					file_read->read(&data[0], file_size);
+					file_read->close();
+					ssl_conf_data_.cert_data =std::move(data);
+				}
+
+				if (fs::exists(ssl_conf_.key_file, ec)) {
+					std::unique_ptr<std::ifstream>file_read = std::make_unique<std::ifstream>();
+
+					file_read->open(ssl_conf_.key_file, std::ios::binary | std::ios::ate);
+					if (!file_read->is_open()) {
+						return;
+					}
+
+					std::string data;
+					std::size_t file_size = file_read->tellg();
+					data.resize(file_size);
+					file_read->seekg(0, std::ios::beg);
+
+					file_read->read(&data[0], file_size);
+					file_read->close();
+
+					ssl_conf_data_.key_data = std::move(data);
+				}
+
+				if (fs::exists(ssl_conf_.pem_flie, ec)) {
+
+					std::unique_ptr<std::ifstream>file_read = std::make_unique<std::ifstream>();
+
+					file_read->open(ssl_conf_.pem_flie, std::ios::binary | std::ios::ate);
+					if (!file_read->is_open()) {
+						return;
+					}
+
+					std::string data;
+					std::size_t file_size = file_read->tellg();
+					data.resize(file_size);
+					file_read->seekg(0, std::ios::beg);
+
+					file_read->read(&data[0], file_size);
+					file_read->close();
+					ssl_conf_data_.pem_data = std::move(data);
+				}
+
+
 			}
 #endif
 		private:
@@ -87,7 +147,7 @@ namespace wheel {
 				std::shared_ptr<http_tcp_handle > new_session = nullptr;
 				try
 				{
-					new_session = std::make_shared<http_tcp_handle>(strand_,http_handler_, upload_dir_, ssl_conf_, need_response_time_);
+					new_session = std::make_shared<http_tcp_handle>(strand_,http_handler_, upload_dir_,ssl_conf_data_, need_response_time_);
 				}
 				catch (const std::exception & ex)
 				{
@@ -165,6 +225,7 @@ namespace wheel {
 		private:
 			bool need_response_time_ = false;
 			ssl_configure ssl_conf_;
+			ssl_configure_data ssl_conf_data_;
 			std::string upload_dir_ = fs::absolute("www").string(); //default
 			http_handler http_handler_;
 			http_router http_router_;
