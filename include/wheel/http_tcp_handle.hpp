@@ -211,6 +211,17 @@ namespace wheel {
 #endif
 			}
 
+			void async_shut_down() {
+#ifdef WHEEL_ENABLE_SSL
+				ssl_socket_->next_layer().expires_after(std::chrono::seconds(30));
+				ssl_socket_->async_shutdown(boost::beast::bind_front_handler([self =shared_from_this()](const boost::system::error_code &ec) {
+					if (ec){
+						return;
+					}
+
+					}));
+#endif
+			}
 			void async_read_some() {
 				if (!check_argument()) {
 					return;
@@ -236,13 +247,13 @@ namespace wheel {
 
 				boost::system::error_code ignored_ec;
 #ifdef WHEEL_ENABLE_SSL
-				auto& socket_id = ssl_socket_->next_layer().socket();
-				if (socket_id.is_open()) {
-					socket_id.shutdown(
-						boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
+				//auto& socket_id = ssl_socket_->next_layer().socket();
+				//if (socket_id.is_open()) {
+				//	socket_id.shutdown(
+				//		boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
 
-					socket_id.close(ignored_ec);
-				}
+				//	socket_id.close(ignored_ec);
+				//}
 #else
 				if (socket_->is_open()) {
 					socket_->shutdown(
@@ -255,10 +266,12 @@ namespace wheel {
 
 			void release_session(const boost::system::error_code& ec) {
 				//shared_from_this不能被调两次
-				if (close_observer_ == nullptr) {
+				if (close_observer_ == nullptr || 
+					ssl_socket_ == nullptr) {
 					return;
 				}
 
+				async_shut_down();
 				close_observer_(shared_from_this(), ec);
 			}
 
