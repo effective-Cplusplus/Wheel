@@ -191,10 +191,9 @@ namespace wheel {
 					return;
 				}
 
-
 				ssl_socket_->next_layer().expires_after(std::chrono::seconds(30));
 
-				ssl_socket_->async_handshake(boost::asio::ssl::stream_base::server, strand_->wrap([self = shared_from_this()](const boost::system::error_code& error) {
+				ssl_socket_->async_handshake(boost::asio::ssl::stream_base::server,[self = shared_from_this()](const boost::system::error_code& error) {
 					if (error) {
 						if (error.value() != 336151574) {
 							self->release_session(boost::asio::error::make_error_code(
@@ -207,7 +206,7 @@ namespace wheel {
 
 					self->has_shake_ = true;
 					self->async_read_some();
-				}));
+				});
 #endif
 			}
 
