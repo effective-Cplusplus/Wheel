@@ -222,6 +222,9 @@ namespace wheel {
 						return;
 					}
 
+					boost::system::error_code e;
+					self->ssl_socket_->next_layer().socket().shutdown(boost::asio::ip::tcp::socket::shutdown_receive,e);
+					self->ssl_socket_->next_layer().socket().close(e);
 					}));
 #endif
 			}
