@@ -3,6 +3,8 @@
 
 #ifdef WHEEL_ENABLE_SSL
 #include <boost/asio/ssl.hpp>
+#include <boost/beast.hpp>
+#include <boost/beast/ssl.hpp>
 #endif
 #include <iostream>
 #include <memory>
@@ -61,7 +63,7 @@ namespace wheel {
 
 			boost::asio::ip::tcp::socket* get_socket()const {
 #ifdef WHEEL_ENABLE_SSL
-				return &ssl_socket_->next_layer();
+				return &ssl_socket_->next_layer().socket();
 #else
 				return socket_.get();
 #endif
@@ -152,7 +154,7 @@ namespace wheel {
 							boost::asio::buffer(ssl_conf.pem_data.data(), ssl_conf.pem_data.size()));
 					}
 
-					ssl_socket_ = std::make_unique<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(*io_service_poll::get_instance().get_io_service(), ssl_context);
+					ssl_socket_ = std::make_unique<boost::beast::ssl_stream<boost::beast::tcp_stream>>(*io_service_poll::get_instance().get_io_service(), ssl_context);
 					//SSL_set_cipher_list(ssl_socket_->native_handle(), "eNULL");
 					//SSL_set_options(ssl_socket_->native_handle(), SSL_OP_NO_COMPRESSION);
 				}
@@ -173,7 +175,11 @@ namespace wheel {
 				request_->reset();
 				response_->reset();
 				if (is_ssl_ && !has_shake_) {
-					async_handshake();
+					boost::beast::net::dispatch(
+						ssl_socket_->get_executor(),
+						boost::beast::bind_front_handler(
+							&http_tcp_handle::async_handshake,
+							shared_from_this()));
 				}else {
 					async_read_some();
 				}
@@ -184,6 +190,9 @@ namespace wheel {
 				if (ssl_socket_ == nullptr) {
 					return;
 				}
+
+
+				ssl_socket_->next_layer().expires_after(std::chrono::seconds(30));
 
 				ssl_socket_->async_handshake(boost::asio::ssl::stream_base::server, strand_->wrap([self = shared_from_this()](const boost::system::error_code& error) {
 					if (error) {
@@ -227,8 +236,7 @@ namespace wheel {
 
 				boost::system::error_code ignored_ec;
 #ifdef WHEEL_ENABLE_SSL
-				auto& socket_id = ssl_socket_->next_layer();
-
+				auto& socket_id = ssl_socket_->next_layer().socket();
 				if (socket_id.is_open()) {
 					socket_id.shutdown(
 						boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
@@ -827,7 +835,7 @@ namespace wheel {
 				//快速关闭,提高高并发
 				boost::asio::socket_base::linger linger_option(true,0);
 #ifdef WHEEL_ENABLE_SSL
-				auto& socket_id = ssl_socket_->next_layer();
+				auto& socket_id = ssl_socket_->next_layer().socket();
 				socket_id.set_option(option,ec);
 				socket_id.set_option(linger_option, ec);
 #else
@@ -844,7 +852,7 @@ namespace wheel {
 				boost::system::error_code ec;
 				boost::asio::socket_base::reuse_address readdress(true);
 #ifdef WHEEL_ENABLE_SSL
-				auto& socket_id = ssl_socket_->next_layer();
+				auto& socket_id = ssl_socket_->next_layer().socket();
 				socket_id.set_option(readdress,ec);
 #else
 				socket_->set_option(readdress, ec);
@@ -1191,7 +1199,7 @@ namespace wheel {
 			std::function<bool(request&, response&)>* upload_check_ = nullptr;
 			std::function<void(request&, std::string&)> multipart_begin_ = nullptr;
 #ifdef WHEEL_ENABLE_SSL
-			std::unique_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>> ssl_socket_{};
+			std::unique_ptr<boost::beast::ssl_stream<boost::beast::tcp_stream>> ssl_socket_{};
 #else
 			std::shared_ptr<boost::asio::ip::tcp::socket> socket_{};
 #endif
