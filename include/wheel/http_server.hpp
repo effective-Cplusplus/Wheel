@@ -62,28 +62,25 @@ namespace wheel {
 				need_response_time_ = enable;
 			}
 
-#ifdef WHEEL_ENABLE_SSL
-			void set_ssl_conf(ssl_configure conf) {
-				ssl_conf_ = std::move(conf);
+			ssl_configure_data read_cert_data(const ssl_configure& conf) {
+				ssl_configure_data ssl_conf_data;
 
 				boost::system::error_code ec;
 				if (fs::exists(ssl_conf_.cert_file, ec)) {
 					std::unique_ptr<std::ifstream>file_read_ = std::make_unique<std::ifstream>();
 
 					file_read_->open(ssl_conf_.cert_file, std::ios::binary | std::ios::ate);
-					if (!file_read_->is_open()) {
-						return;
+					if (file_read_->is_open()) {
+						std::string data;
+						std::size_t file_size = file_read_->tellg();
+						data.resize(file_size);
+						file_read_->seekg(0, std::ios::beg);
+
+						file_read_->read(&data[0], file_size);
+						file_read_->close();
+
+						ssl_conf_data.cert_data = std::move(data);
 					}
-
-					std::string data;
-					std::size_t file_size = file_read_->tellg();
-					data.resize(file_size);
-					file_read_->seekg(0, std::ios::beg);
-
-					file_read_->read(&data[0], file_size);
-					file_read_->close();
-
-					ssl_conf_data_.cert_data = std::move(data);
 				}
 
 
@@ -91,19 +88,17 @@ namespace wheel {
 					std::unique_ptr<std::ifstream>file_read_ = std::make_unique<std::ifstream>();
 
 					file_read_->open(ssl_conf_.key_file, std::ios::binary | std::ios::ate);
-					if (!file_read_->is_open()) {
-						return;
+					if (file_read_->is_open()) {
+						std::string data;
+						std::size_t file_size = file_read_->tellg();
+						data.resize(file_size);
+						file_read_->seekg(0, std::ios::beg);
+
+						file_read_->read(&data[0], file_size);
+						file_read_->close();
+
+						ssl_conf_data.key_data = std::move(data);
 					}
-
-					std::string data;
-					std::size_t file_size = file_read_->tellg();
-					data.resize(file_size);
-					file_read_->seekg(0, std::ios::beg);
-
-					file_read_->read(&data[0], file_size);
-					file_read_->close();
-
-					ssl_conf_data_.key_data = std::move(data);
 				}
 
 
@@ -111,22 +106,27 @@ namespace wheel {
 					std::unique_ptr<std::ifstream>file_read_ = std::make_unique<std::ifstream>();
 
 					file_read_->open(ssl_conf_.pem_flie, std::ios::binary | std::ios::ate);
-					if (!file_read_->is_open()) {
-						return;
+					if (file_read_->is_open()) {
+						std::string data;
+						std::size_t file_size = file_read_->tellg();
+						data.resize(file_size);
+						file_read_->seekg(0, std::ios::beg);
+
+						file_read_->read(&data[0], file_size);
+						file_read_->close();
+
+						ssl_conf_data.pem_data = std::move(data);
 					}
-
-					std::string data;
-					std::size_t file_size = file_read_->tellg();
-					data.resize(file_size);
-					file_read_->seekg(0, std::ios::beg);
-
-					file_read_->read(&data[0], file_size);
-					file_read_->close();
-
-					ssl_conf_data_.pem_data = std::move(data);
 				}
 
-				ssl_conf_data_.passp_hrase_data = ssl_conf_.passp_hrase;
+				return std::move(ssl_conf_data);
+			}
+
+#ifdef WHEEL_ENABLE_SSL
+			void set_ssl_conf(ssl_configure conf) {
+				ssl_conf_ = std::move(conf);
+
+				ssl_conf_data_= read_cert_data(conf);
 			}
 #endif
 		private:
