@@ -213,6 +213,10 @@ namespace wheel {
 
 			void async_shut_down() {
 #ifdef WHEEL_ENABLE_SSL
+				if (ssl_socket_ == nullptr) {
+					return;
+				}
+
 				ssl_socket_->next_layer().expires_after(std::chrono::seconds(30));
 				ssl_socket_->async_shutdown(boost::beast::bind_front_handler([self =shared_from_this()](const boost::system::error_code &ec) {
 					if (ec){
