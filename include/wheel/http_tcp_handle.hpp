@@ -249,15 +249,7 @@ namespace wheel {
 				}
 
 				boost::system::error_code ignored_ec;
-#ifdef WHEEL_ENABLE_SSL
-				//auto& socket_id = ssl_socket_->next_layer().socket();
-				//if (socket_id.is_open()) {
-				//	socket_id.shutdown(
-				//		boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
-
-				//	socket_id.close(ignored_ec);
-				//}
-#else
+#ifndef WHEEL_ENABLE_SSL
 				if (socket_->is_open()) {
 					socket_->shutdown(
 						boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
