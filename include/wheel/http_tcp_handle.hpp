@@ -124,6 +124,7 @@ namespace wheel {
 				unsigned long ssl_options = boost::asio::ssl::context::default_workarounds
 					| boost::asio::ssl::context::no_sslv3
 					|boost::asio::ssl::context::no_sslv2
+					|boost::asio::ssl::context::no_compression
 					| boost::asio::ssl::context::single_dh_use;
 				try {
 					boost::asio::ssl::context ssl_context(boost::asio::ssl::context::tlsv12);//tsl1.2
@@ -156,6 +157,7 @@ namespace wheel {
 							boost::asio::buffer(ssl_conf.pem_data.data(), ssl_conf.pem_data.size()));
 					}
 
+					//SSL_CTX_set_cipher_list(ssl_context.native_handle(),"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA");
 					ssl_socket_ = std::make_unique<boost::beast::ssl_stream<boost::beast::tcp_stream>>(*io_service_poll::get_instance().get_io_service(), ssl_context);
 					//SSL_set_cipher_list(ssl_socket_->native_handle(), "eNULL");
 					//SSL_set_options(ssl_socket_->native_handle(), SSL_OP_NO_COMPRESSION);
