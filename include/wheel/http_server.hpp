@@ -33,7 +33,7 @@ namespace wheel {
 				accept_ =wheel::traits::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_poll::get_instance().get_io_service());
 
 				//一定要调用open否则会监听失败
-				accept_->open(boost::asio::ip::tcp::v4());
+				accept_->open(boost::asio::ip::tcp::v4(),ec);
 				if (!accept_->is_open()){
 					return;
 				}
