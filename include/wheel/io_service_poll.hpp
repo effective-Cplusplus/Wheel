@@ -47,7 +47,7 @@ namespace wheel {
 		io_service_poll() {
 			try
 			{
-				service_ = std::make_shared<boost::asio::io_service>();
+				service_ = std::make_shared<boost::asio::io_service>(std::thread::hardware_concurrency());
 			}
 			catch (const std::exception & ex)
 			{
