@@ -71,6 +71,8 @@ namespace wheel {
 
 			~http_tcp_handle() {
 				close();
+
+				close_observer_ = nullptr;
 			}
 
 			void activate() {
@@ -198,7 +200,7 @@ namespace wheel {
 						if (error.value() != 336151574) {
 							self->release_session(boost::asio::error::make_error_code(
 								static_cast<boost::asio::error::basic_errors>(error.value())));
-							std::cout << "code:" << error.value() << "message:" << error.message() << std::endl;
+							//std::cout << "code:" << error.value() << "message:" << error.message() << std::endl;
 							self->has_shake_ = false;
 							return;
 						}
@@ -216,8 +218,8 @@ namespace wheel {
 					return;
 				}
 
-				//ssl_socket_->next_layer().expires_after(std::chrono::seconds(30));
-				ssl_socket_->next_layer().expires_never();
+				ssl_socket_->next_layer().expires_after(std::chrono::milliseconds(200));
+				//ssl_socket_->next_layer().expires_never();
 				ssl_socket_->async_shutdown(boost::beast::bind_front_handler([self =shared_from_this()](const boost::system::error_code &ec) {
 					if (ec){
 						return;
@@ -267,7 +269,12 @@ namespace wheel {
 					return;
 				}
 
-				async_shut_down();
+				boost::beast::net::dispatch(
+					ssl_socket_->get_executor(),
+					boost::beast::bind_front_handler(
+						&http_tcp_handle::async_shut_down,
+						shared_from_this()));
+				//async_shut_down();
 				close_observer_(shared_from_this(), ec);
 			}
 
@@ -1198,8 +1205,8 @@ namespace wheel {
 			content_type req_content_type_;
 			const std::string& static_dir_;
 			const http_handler& http_handler_;
-			ConnectEventObserver		connect_observer_;
-			CloseEventObserver			close_observer_;
+			ConnectEventObserver		connect_observer_ =nullptr;
+			CloseEventObserver			close_observer_ = nullptr;
 			size_t len_ = 0;
 			size_t last_transfer_ = 0;
 			multipart_reader multipart_parser_;
