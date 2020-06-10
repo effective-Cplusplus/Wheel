@@ -21,7 +21,7 @@ namespace wheel {
 			stop();
 		}
 
-		const std::shared_ptr<boost::asio::io_service> get_io_service()const
+		const std::shared_ptr<boost::asio::io_context> get_io_service()const
 		{
 			return service_;
 		}
@@ -47,7 +47,7 @@ namespace wheel {
 		io_service_poll() {
 			try
 			{
-				service_ = std::make_shared<boost::asio::io_service>(std::thread::hardware_concurrency());
+				service_ = std::make_shared<boost::asio::io_context>(std::thread::hardware_concurrency());
 			}
 			catch (const std::exception & ex)
 			{
@@ -65,7 +65,7 @@ namespace wheel {
 		}
 	private:
 		std::vector<std::thread>threads_;
-		std::shared_ptr<boost::asio::io_service> service_;
+		std::shared_ptr<boost::asio::io_context> service_;
 	};
 }
 #endif // io_service_poll_h__
