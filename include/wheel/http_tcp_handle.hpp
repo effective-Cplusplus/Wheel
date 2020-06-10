@@ -223,7 +223,7 @@ namespace wheel {
 					return;
 				}
 
-				ssl_socket_->next_layer().expires_after(std::chrono::milliseconds(200));
+				//ssl_socket_->next_layer().expires_after(std::chrono::milliseconds(200));
 				//ssl_socket_->next_layer().expires_never();
 				ssl_socket_->async_shutdown(boost::beast::bind_front_handler([self =shared_from_this()](const boost::system::error_code &ec) {
 					if (ec){
