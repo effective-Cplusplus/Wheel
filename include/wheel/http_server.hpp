@@ -34,6 +34,10 @@ namespace wheel {
 
 				//一定要调用open否则会监听失败
 				accept_->open(boost::asio::ip::tcp::v4());
+				if (!accept_->is_open()){
+					return;
+				}
+
 				accept_->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), ec);
 				accept_->bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port),ec);
 				accept_->listen(boost::asio::socket_base::max_connections, ec);
