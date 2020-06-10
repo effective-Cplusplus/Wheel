@@ -269,8 +269,12 @@ namespace wheel {
 
 			void release_session(const boost::system::error_code& ec) {
 				//shared_from_this不能被调两次
-				if (close_observer_ == nullptr || 
-					ssl_socket_ == nullptr) {
+				if (close_observer_ == nullptr ) {
+					return;
+				}
+
+#ifdef WHEEL_ENABLE_SSL
+				if (ssl_socket_ == nullptr){
 					return;
 				}
 
@@ -280,6 +284,7 @@ namespace wheel {
 						&http_tcp_handle::async_shut_down,
 						shared_from_this()));
 				//async_shut_down();
+#endif
 				close_observer_(shared_from_this(), ec);
 			}
 
