@@ -179,11 +179,14 @@ namespace wheel {
 				request_->reset();
 				response_->reset();
 				if (is_ssl_ && !has_shake_) {
+#ifdef WHEEL_ENABLE_SSL
 					boost::beast::net::dispatch(
 						ssl_socket_->get_executor(),
 						boost::beast::bind_front_handler(
 							&http_tcp_handle::async_handshake,
 							shared_from_this()));
+#endif
+
 				}else {
 					async_read_some();
 				}
