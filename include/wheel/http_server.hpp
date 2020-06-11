@@ -38,7 +38,10 @@ namespace wheel {
 					return;
 				}
 
+				int qlen = 5;
 				accept_->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), ec);
+				accept_->set_option(boost::asio::detail::socket_option::integer<IPPROTO_TCP, TCP_FASTOPEN>(qlen), ec);
+
 				accept_->bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port),ec);
 				accept_->listen(boost::asio::socket_base::max_connections, ec);
 				if (ec){
