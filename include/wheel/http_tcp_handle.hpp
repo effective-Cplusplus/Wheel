@@ -159,6 +159,10 @@ namespace wheel {
 
 					//SSL_CTX_set_cipher_list(ssl_context.native_handle(),"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA");
 					ssl_socket_ = std::make_unique<boost::beast::ssl_stream<boost::beast::tcp_stream>>(*io_service_poll::get_instance().get_io_service(), ssl_context);
+					boost::system::error_code ec;
+					ssl_socket_->set_verify_depth(10, ec);
+					//ssl_socket_->set_verify_mode(SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, ec);
+					ssl_socket_->set_verify_mode(SSL_VERIFY_NONE, ec);
 					//SSL_set_cipher_list(ssl_socket_->native_handle(), "eNULL");
 					//SSL_set_options(ssl_socket_->native_handle(), SSL_OP_NO_COMPRESSION);
 				}
@@ -200,7 +204,7 @@ namespace wheel {
 
 				ssl_socket_->next_layer().expires_after(std::chrono::seconds(30));
 
-				ssl_socket_->async_handshake(boost::asio::ssl::stream_base::server,strand_->wrap([self = shared_from_this()](const boost::system::error_code& error) {
+			ssl_socket_->async_handshake(boost::asio::ssl::stream_base::server,strand_->wrap([self = shared_from_this()](const boost::system::error_code& error) {
 					if (error) {
 						if (error.value() != 336151574) {
 							self->release_session(boost::asio::error::make_error_code(
@@ -242,7 +246,7 @@ namespace wheel {
 					if (ec) {
 						self->release_session(boost::asio::error::make_error_code(
 							static_cast<boost::asio::error::basic_errors>(ec.value())));
-						std::cout << ec.message() << std::endl;
+						//std::cout << ec.message() << std::endl;
 
 						self->has_shake_ = false;
 						return;
@@ -858,8 +862,8 @@ namespace wheel {
 				boost::system::error_code ec;
 				//关闭牛逼的算法(nagle算法),防止TCP的数据包在饱满时才发送过去
 				boost::asio::ip::tcp::no_delay option(true);
-				//快速关闭,提高高并发
-				boost::asio::socket_base::linger linger_option(true,1);
+				//快速关闭,提高高并发,缓冲区存留的数据直接丢弃 
+				boost::asio::socket_base::linger linger_option(true,0);
 #ifdef WHEEL_ENABLE_SSL
 				auto& socket_id = ssl_socket_->next_layer().socket();
 				socket_id.set_option(option,ec);
