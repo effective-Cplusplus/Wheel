@@ -2,6 +2,7 @@
 #define timer_h__
 #include <memory>
 #include <thread>
+#include <atomic>
 #include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include "traits.hpp"
@@ -16,13 +17,30 @@ namespace wheel {
 			:trigger_(trigger){
 				ios_ = wheel::traits::make_unique<boost::asio::io_service>();
 				timer_ = wheel::traits::make_unique<boost::asio::steady_timer>(*ios_);
-				thread_ = wheel::traits::make_unique<std::thread>([this] {ios_->run();});
+				thread_ = wheel::traits::make_unique<std::thread>([this] {
+					while (1) {
+						if (!exit_) {
+							break;
+						}
+
+						boost::system::error_code ec;
+						ios_->poll(ec);
+						if (ec) {
+							break;
+						}
+
+						std::this_thread::sleep_for(std::chrono::milliseconds(200));
+					}
+					});
 			}
 			
 			~timer() {
+				ios_->stop();
+				exit_ = false;
+
 				if (thread_ != nullptr){
 					if (thread_->joinable()) {
-						thread_->join(); //µÈ´ı×ÓÏß³ÉÍË³ö
+						thread_->join(); //ç­‰å¾…å­çº¿æˆé€€å‡º
 					}
 				}
 
@@ -30,7 +48,7 @@ namespace wheel {
 				thread_ = nullptr;
 			}
 
-			//¶¨Ê±Æ÷Ò»¸ö¶¯×÷È¥Ö´ĞĞ
+			//å®šæ—¶å™¨ä¸€ä¸ªåŠ¨ä½œå»æ‰§è¡Œ
 			void start_timer(int seconds) {
 				timer_->expires_from_now(std::chrono::seconds(seconds));
 				timer_->async_wait([this](const boost::system::error_code& ec) {
@@ -38,17 +56,17 @@ namespace wheel {
 						return;
 					}
 
-					trigger_(); //Ö´ĞĞ²Ù×÷º¯Êı
+					trigger_(); //æ‰§è¡Œæ“ä½œå‡½æ•°
 					});
 			}
 
-			//È¡Ïû¶¨Ê±Æ÷
+			//å–æ¶ˆå®šæ—¶å™¨
 			void cancel() {
 				boost::system::error_code ec;
 				timer_->cancel(ec);
 			}
 
-			//Ñ­»·¶¨Ê±Æ÷
+			//å¾ªç¯å®šæ—¶å™¨
 			void loop_timer(int seconds) {
 				timer_->expires_from_now(std::chrono::seconds(seconds));
 				timer_->async_wait([this,seconds](const boost::system::error_code& ec) {
@@ -56,12 +74,13 @@ namespace wheel {
 						return;
 					}
 
-					trigger_(); //Ö´ĞĞ²Ù×÷º¯Êı
+					trigger_(); //æ‰§è¡Œæ“ä½œå‡½æ•°
 					loop_timer(seconds);
 					});
 			}
 
 		private:
+			std::atomic<bool>exit_ = true;
 			std::unique_ptr<boost::asio::io_service>ios_ = nullptr;
 			std::unique_ptr<std::thread>thread_ = nullptr;
 			std::unique_ptr<boost::asio::steady_timer>timer_;
