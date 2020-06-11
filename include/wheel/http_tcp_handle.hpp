@@ -63,7 +63,7 @@ namespace wheel {
 
 			boost::asio::ip::tcp::socket* get_socket()const {
 #ifdef WHEEL_ENABLE_SSL
-				return &ssl_socket_->next_layer().socket();
+				return &boost::beast::get_lowest_layer(*ssl_socket_).socket();
 #else
 				return socket_.get();
 #endif
@@ -202,9 +202,9 @@ namespace wheel {
 					return;
 				}
 
-				ssl_socket_->next_layer().expires_after(std::chrono::seconds(30));
+				boost::beast::get_lowest_layer(*ssl_socket_).expires_after(std::chrono::seconds(30));
 
-			ssl_socket_->async_handshake(boost::asio::ssl::stream_base::server,strand_->wrap([self = shared_from_this()](const boost::system::error_code& error) {
+				ssl_socket_->async_handshake(boost::asio::ssl::stream_base::server,strand_->wrap([self = shared_from_this()](const boost::system::error_code& error) {
 					if (error) {
 						if (error.value() != 336151574) {
 							self->release_session(boost::asio::error::make_error_code(
@@ -865,7 +865,7 @@ namespace wheel {
 				//快速关闭,提高高并发,缓冲区存留的数据直接丢弃 
 				boost::asio::socket_base::linger linger_option(true,0);
 #ifdef WHEEL_ENABLE_SSL
-				auto& socket_id = ssl_socket_->next_layer().socket();
+				auto& socket_id = boost::beast::get_lowest_layer(*ssl_socket_).socket();
 				socket_id.set_option(option,ec);
 				socket_id.set_option(linger_option, ec);
 #else
@@ -882,7 +882,7 @@ namespace wheel {
 				boost::system::error_code ec;
 				boost::asio::socket_base::reuse_address readdress(true);
 #ifdef WHEEL_ENABLE_SSL
-				auto& socket_id = ssl_socket_->next_layer().socket();
+				auto& socket_id = boost::beast::get_lowest_layer(*ssl_socket_).socket();
 				socket_id.set_option(readdress,ec);
 #else
 				socket_->set_option(readdress, ec);
