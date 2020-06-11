@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <thread>
-//#include <atomic>
+#include <atomic>
 #include <fstream>
 #include <unordered_map>
 #include "http_tcp_handle.hpp"
@@ -212,6 +212,14 @@ namespace wheel {
 					return;
 				}
 
+				counts_++;
+				size_t time_stamp = unit::get_time_stamp();
+				if (time_stamp -time_stamp_ >=1){
+					std::cout << "qps:" << counts_ << std::endl;
+					counts_ = 0;
+					time_stamp_ = time_stamp;
+				}
+
 				std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
 				std::time_t timestamp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count();
 				//while (lock_.test_and_set(std::memory_order_acquire));
@@ -233,9 +241,11 @@ namespace wheel {
 			bool need_response_time_ = false;
 			ssl_configure ssl_conf_;
 			ssl_configure_data ssl_conf_data_;
+			std::atomic<int>counts_ = 0;
 			std::string upload_dir_ = fs::absolute("www").string(); //default
 			http_handler http_handler_;
 			http_router http_router_;
+			size_t time_stamp_ = unit::get_time_stamp();
 			//std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
 			std::unordered_map<std::shared_ptr<wheel::http_servers::http_tcp_handle>, std::time_t>connects_;
 			std::unique_ptr<boost::asio::ip::tcp::acceptor> accept_{};
