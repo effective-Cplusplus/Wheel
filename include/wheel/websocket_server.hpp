@@ -76,8 +76,8 @@ namespace wheel {
 				}
 			}
 
-			void run(size_t thread_num = std::thread::hardware_concurrency()) {
-				io_service_poll::get_instance().run(thread_num);
+			void run() {
+				io_service_poll::get_instance().run();
 			}
 		private:
 			bool port_in_use(unsigned short port) {
