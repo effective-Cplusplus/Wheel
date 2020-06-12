@@ -202,7 +202,7 @@ namespace wheel {
 					return;
 				}
 
-				boost::beast::get_lowest_layer(*ssl_socket_).expires_after(std::chrono::seconds(30));
+				//boost::beast::get_lowest_layer(*ssl_socket_).expires_after(std::chrono::seconds(30));
 
 				ssl_socket_->async_handshake(boost::asio::ssl::stream_base::server,strand_->wrap([self = shared_from_this()](const boost::system::error_code& error) {
 					if (error) {
