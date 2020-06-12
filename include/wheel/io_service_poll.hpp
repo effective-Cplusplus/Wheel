@@ -63,8 +63,8 @@ namespace wheel {
 			{
 				size_t count= std::thread::hardware_concurrency();
 				for (size_t index =0;index< count;++index){
-					auto ios = std::make_shared<boost::asio::io_service>();
-					auto work = traits::make_unique<boost::asio::io_service::work>(*ios);
+					auto ios = std::make_shared<boost::asio::io_context>();
+					auto work = traits::make_unique<boost::asio::io_context::work>(*ios);
 					works_.emplace_back(std::move(work));
 					io_services_.emplace_back(std::move(ios));
 				}
@@ -86,8 +86,8 @@ namespace wheel {
 			io_services_.clear();
 		}
 	private:
-		using io_service_ptr = std::shared_ptr<boost::asio::io_service>;
-		using work_ptr = std::unique_ptr<boost::asio::io_service::work>;
+		using io_service_ptr = std::shared_ptr<boost::asio::io_context>;
+		using work_ptr = std::unique_ptr<boost::asio::io_context::work>;
 
 		size_t next_io_service_ = 1;
 		std::vector<io_service_ptr>io_services_;
