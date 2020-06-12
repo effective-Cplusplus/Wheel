@@ -15,7 +15,6 @@ namespace wheel {
 		public:
 			http_server(){
 				init_conn_callback();
-				strand_ = wheel::traits::make_unique<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
 			}
 
 			~http_server() {
@@ -30,7 +29,7 @@ namespace wheel {
 
 				//accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*ios_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
 				boost::system::error_code ec;
-				accept_ =wheel::traits::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_poll::get_instance().get_io_service());
+				accept_ =wheel::traits::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_poll::get_instance().get_main_io_service());
 
 				//一定要调用open否则会监听失败
 				accept_->open(boost::asio::ip::tcp::v4(),ec);
@@ -60,8 +59,8 @@ namespace wheel {
 				http_router_.register_handler<Is...>(name, std::forward<Function>(f), std::forward<AP>(ap)...);
 			}
 
-			void run(size_t thread_num = std::thread::hardware_concurrency()) {
-				io_service_poll::get_instance().run(thread_num);
+			void run() {
+				io_service_poll::get_instance().run();
 			}
 
 			//应答的时候是否需要加上时间
@@ -150,14 +149,14 @@ namespace wheel {
 			}
 		private:
 			void make_session() {
-				if (accept_ == nullptr || strand_ == nullptr) {
+				if (accept_ == nullptr) {
 					return;
 				}
 
 				std::shared_ptr<http_tcp_handle > new_session = nullptr;
 				try
 				{
-					new_session = std::make_shared<http_tcp_handle>(strand_,http_handler_, upload_dir_, ssl_conf_data_, need_response_time_);
+					new_session = std::make_shared<http_tcp_handle>(http_handler_, upload_dir_, ssl_conf_data_, need_response_time_);
 				}
 				catch (const std::exception & ex)
 				{
@@ -177,14 +176,14 @@ namespace wheel {
 				new_session->register_close_observer(std::bind(&http_server::on_close, this, std::placeholders::_1, std::placeholders::_2));
 				new_session->register_connect_observer(std::bind(&http_server::on_connect, this, std::placeholders::_1));
 				//发一次数据接收一次
-				accept_->async_accept(*socket_ptr,strand_->wrap([this, new_session](const boost::system::error_code& ec) {
+				accept_->async_accept(*socket_ptr,[this, new_session](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
 
 					new_session->activate();
 					make_session();
-					}));
+					});
 			}
 
 			void init_conn_callback() {
@@ -257,7 +256,6 @@ namespace wheel {
 			//std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
 			std::unordered_map<std::shared_ptr<wheel::http_servers::http_tcp_handle>, std::time_t>connects_;
 			std::unique_ptr<boost::asio::ip::tcp::acceptor> accept_{};
-			std::shared_ptr<boost::asio::io_service::strand>strand_;
 		};
 	}
 }

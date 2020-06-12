@@ -21,22 +21,36 @@ namespace wheel {
 			stop();
 		}
 
-		const std::shared_ptr<boost::asio::io_context> get_io_service()const
-		{
-			return service_;
+		std::shared_ptr<boost::asio::io_service> get_main_io_service()const{
+			auto ptr = io_services_[0];
+			return std::move(ptr);
 		}
 
-		void run(size_t thread_num)
-		{
-			for (int i = 0; i < thread_num - 1; ++i) {
-				threads_.emplace_back([this]() {
-					boost::system::error_code ec;
-					service_->run(ec);
-					});
+		std::shared_ptr<boost::asio::io_service> get_io_service() {
+			auto io_service = io_services_[next_io_service_];
+			++next_io_service_;
+			if (next_io_service_ == io_services_.size()) {
+				next_io_service_ = 1;
+			}
+				
+			return std::move(io_service);
+		}
+
+		void run(){
+			std::vector<std::shared_ptr<std::thread> > threads;
+			for (std::size_t i = 0; i < io_services_.size(); ++i) {
+				threads.emplace_back(std::make_shared<std::thread>(
+					[](io_service_ptr svr) {
+						boost::system::error_code ec;
+						svr->run(ec);
+					}, io_services_[i]));
 			}
 
-			boost::system::error_code ec;
-			service_->run(ec);
+			size_t count = threads.size();
+
+			for (std::size_t i = 0; i < count; ++i) {
+				threads[i]->join();
+			}	
 		}
 
 		io_service_poll(const io_service_poll&) = delete;
@@ -47,25 +61,37 @@ namespace wheel {
 		io_service_poll() {
 			try
 			{
-				service_ = std::make_shared<boost::asio::io_context>(std::thread::hardware_concurrency());
-			}
-			catch (const std::exception & ex)
-			{
+				size_t count= std::thread::hardware_concurrency();
+				for (size_t index =0;index< count;++index){
+					auto ios = std::make_shared<boost::asio::io_service>();
+					auto work = traits::make_unique<boost::asio::io_service::work>(*ios);
+					works_.emplace_back(std::move(work));
+					io_services_.emplace_back(std::move(ios));
+				}
+
+			}catch (const std::exception & ex){
 				std::cout << ex.what() << std::endl;
 				exit(0);
 			}
 		}
 	private:
-		void stop()
-		{
-			service_->stop();
-			for (auto& t : threads_) {
-				t.join();
+		void stop(){
+			works_.clear();
+
+			size_t count = io_services_.size();
+			for (size_t index =0;index< count;++index){
+				io_services_[index]->stop();
 			}
+
+			io_services_.clear();
 		}
 	private:
-		std::vector<std::thread>threads_;
-		std::shared_ptr<boost::asio::io_context> service_;
+		using io_service_ptr = std::shared_ptr<boost::asio::io_service>;
+		using work_ptr = std::unique_ptr<boost::asio::io_service::work>;
+
+		size_t next_io_service_ = 1;
+		std::vector<io_service_ptr>io_services_;
+		std::vector<work_ptr>works_;
 	};
 }
 #endif // io_service_poll_h__
