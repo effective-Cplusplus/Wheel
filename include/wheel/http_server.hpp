@@ -14,6 +14,7 @@ namespace wheel {
 		class http_server {
 		public:
 			http_server(){
+				counts_ = 0;
 				init_conn_callback();
 			}
 
@@ -248,7 +249,7 @@ namespace wheel {
 			bool need_response_time_ = false;
 			ssl_configure ssl_conf_;
 			ssl_configure_data ssl_conf_data_;
-			std::atomic<int>counts_ = 0;
+			std::atomic<int>counts_;
 			std::string upload_dir_ = fs::absolute("www").string(); //default
 			http_handler http_handler_;
 			http_router http_router_;

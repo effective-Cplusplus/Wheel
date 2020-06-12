@@ -14,7 +14,7 @@ namespace wheel {
 		class timer {
 		public:
 			timer(Trigger_type trigger)
-			:trigger_(trigger){
+			:trigger_(trigger), exit_(true){
 				ios_ = wheel::traits::make_unique<boost::asio::io_service>();
 				timer_ = wheel::traits::make_unique<boost::asio::steady_timer>(*ios_);
 				thread_ = wheel::traits::make_unique<std::thread>([this] {
@@ -80,7 +80,7 @@ namespace wheel {
 			}
 
 		private:
-			std::atomic<bool>exit_ = true;
+			std::atomic<bool>exit_;
 			std::unique_ptr<boost::asio::io_service>ios_ = nullptr;
 			std::unique_ptr<std::thread>thread_ = nullptr;
 			std::unique_ptr<boost::asio::steady_timer>timer_;
