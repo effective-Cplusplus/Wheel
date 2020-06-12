@@ -29,7 +29,7 @@ namespace wheel {
 		std::shared_ptr<boost::asio::io_service> get_io_service() {
 			auto io_service = io_services_[next_io_service_];
 			++next_io_service_;
-			if (next_io_service_ == io_services_.size()) {
+			if (next_io_service_ >= io_services_.size()) {
 				next_io_service_ = 1;
 			}
 				
