@@ -137,7 +137,7 @@ namespace wheel {
 
 					if (!ssl_conf.cert_data.empty()){
 						ssl_context.use_certificate_chain(
-							boost::asio::buffer(ssl_conf.cert_data.data(), ssl_conf.cert_data.size()));
+							std::move(boost::asio::buffer(ssl_conf.cert_data.data(), ssl_conf.cert_data.size())));
 					}else {
 						std::cout << "server.crt is empty" << std::endl;
 						return false;
@@ -145,7 +145,7 @@ namespace wheel {
 
 					if (!ssl_conf.key_data.empty()){
 						ssl_context.use_private_key(
-							boost::asio::buffer(ssl_conf.key_data.data(), ssl_conf.key_data.size()),
+							std::move(boost::asio::buffer(ssl_conf.key_data.data(), ssl_conf.key_data.size())),
 							boost::asio::ssl::context::file_format::pem);
 					}else {
 						std::cout << "server.key is empty" << std::endl;
@@ -154,7 +154,7 @@ namespace wheel {
 
 					if (!ssl_conf.pem_data.empty()){
 						ssl_context.use_tmp_dh(
-							boost::asio::buffer(ssl_conf.pem_data.data(), ssl_conf.pem_data.size()));
+							std::move(boost::asio::buffer(ssl_conf.pem_data.data(), ssl_conf.pem_data.size())));
 					}
 
 					//SSL_CTX_set_cipher_list(ssl_context.native_handle(),"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA");
