@@ -83,7 +83,7 @@ namespace wheel {
 
 
 			void make_session() {
-				if (accept_ == nullptr || strand_ == nullptr) {
+				if (accept_ == nullptr) {
 					return;
 				}
 
@@ -94,7 +94,7 @@ namespace wheel {
 						new_session = std::make_shared<ws_tcp_handle>(header_size_, packet_size_offset_, packet_cmd_offset_);
 					}
 					else if (parser_type_ == bin) {
-						new_session = std::make_shared<ws_tcp_handle>(strand_);
+						new_session = std::make_shared<ws_tcp_handle>();
 					}
 					else {
 						return;
