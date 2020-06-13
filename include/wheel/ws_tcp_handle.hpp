@@ -39,9 +39,8 @@ namespace wheel {
 		{
 		public:
 			// bin解析
-			ws_tcp_handle(const std::shared_ptr<boost::asio::io_service::strand>& strand, std::size_t header_size,
+			ws_tcp_handle(std::size_t header_size,
 				std::size_t packet_size_offset, std::size_t packet_cmd_offset)
-				:strand_(strand)
 				, connect_status_(-1)
 				, header_size_(header_size)
 				, packet_size_offset_(packet_size_offset)
@@ -198,8 +197,8 @@ namespace wheel {
 				if (write_count_ == 0) {
 					++write_count_; //1:等于0就相加，2:若此变量为1，说明有错误 
 
-					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()),strand_->wrap(std::bind(&ws_tcp_handle::on_write, shared_from_this(),
-						std::placeholders::_1, std::placeholders::_2)));
+					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()),std::bind(&ws_tcp_handle::on_write, shared_from_this(),
+						std::placeholders::_1, std::placeholders::_2));
 				}
 
 				return 0;
@@ -238,7 +237,7 @@ namespace wheel {
 				}
 
 				timer_->expires_from_now(std::chrono::seconds(seconds_));
-				timer_->async_wait(strand_->wrap([self=shared_from_this(), ip, port, recv_observer, close_observer](const boost::system::error_code& ec) {
+				timer_->async_wait([self=shared_from_this(), ip, port, recv_observer, close_observer](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
@@ -249,7 +248,7 @@ namespace wheel {
 
 					self->async_connect(ip, port, recv_observer, close_observer);
 					self->reconect_server(ip, port, recv_observer, close_observer);
-					}));
+					});
 			}
 
 			void register_connect_observer(ConnectEventObserver observer) {
@@ -411,7 +410,7 @@ namespace wheel {
 
 				recv_buffer_size_ = g_packet_buffer_size;
 				recv_buffer_ = wheel::traits::make_unique<char[]>(g_packet_buffer_size);
-				socket_->async_receive(boost::asio::buffer(&recv_buffer_[0], recv_buffer_size_),strand_->wrap([self =shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred) {
+				socket_->async_receive(boost::asio::buffer(&recv_buffer_[0], recv_buffer_size_),[self =shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred) {
 					if (ec) {
 						self->set_connect_status(disconnect);
 						self->close_socket();
@@ -428,7 +427,7 @@ namespace wheel {
 					}
 
 					self->to_read_websocket_data();
-					}));
+					});
 			}
 
 			void to_read() {
@@ -437,7 +436,7 @@ namespace wheel {
 				}
 
 				recv_buffer_ = wheel::traits::make_unique<char[]>(recv_buffer_size_);
-				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0],recv_buffer_size_),strand_->wrap([self =shared_from_this()](const boost::system::error_code ec, size_t bytes_transferred) {
+				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0],recv_buffer_size_),[self =shared_from_this()](const boost::system::error_code ec, size_t bytes_transferred) {
 					if (ec.value() == 0) {
 						bool is_http = false;
 
@@ -469,7 +468,7 @@ namespace wheel {
 
 						self->close_observer_(self, ec);
 					}
-					}));
+					});
 			}
 
 			//读取websocket服务端数据
@@ -479,7 +478,7 @@ namespace wheel {
 				}
 
 				recv_buffer_ = wheel::traits::make_unique<char[]>(g_packet_buffer_size);
-				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0], g_packet_buffer_size),strand_->wrap([self =shared_from_this(), send_handleshake_key](
+				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0], g_packet_buffer_size),[self =shared_from_this(), send_handleshake_key](
 					const boost::system::error_code ec, size_t bytes_transferred) {
 					if (ec.value() == 0) {
 						//handleshake check
@@ -503,14 +502,14 @@ namespace wheel {
 
 						self->close_observer_(self, ec);
 					}
-					}));
+					});
 			}
 			void async_connect(std::string ip, int port, const MessageEventObserver& recv_observer, const CloseEventObserver& close_observer) {
 				if (socket_ == nullptr) {
 					return;
 				}
 
-				socket_->async_connect(TCP::endpoint(ADDRESS::from_string(ip), port),strand_->wrap([self =shared_from_this(), recv_observer, close_observer](const boost::system::error_code& ec) {
+				socket_->async_connect(TCP::endpoint(ADDRESS::from_string(ip), port),[self =shared_from_this(), recv_observer, close_observer](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
@@ -519,7 +518,7 @@ namespace wheel {
 					self->register_close_observer(close_observer);
 					self->register_recv_observer(recv_observer);
 					self->to_read();
-					}));
+					});
 			}
 			void on_write(const boost::system::error_code& ec, std::size_t bytes_transferred) {
 				--write_count_;
@@ -544,8 +543,8 @@ namespace wheel {
 				}
 
 				if (!send_buffers_.empty()) {
-					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()),strand_->wrap(std::bind(&ws_tcp_handle::on_write,shared_from_this(),
-						std::placeholders::_1, std::placeholders::_2)));
+					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()),std::bind(&ws_tcp_handle::on_write,shared_from_this(),
+						std::placeholders::_1, std::placeholders::_2));
 					++write_count_;
 				}
 
@@ -719,7 +718,6 @@ namespace wheel {
 			MessageEventObserver		recv_observer_;
 			CloseEventObserver			close_observer_;
 			std::unique_ptr<char[]> recv_buffer_;
-			std::shared_ptr<boost::asio::io_service::strand>strand_;
 			std::unique_ptr<boost::asio::steady_timer> timer_{};
 			std::unique_ptr<wheel::unit::timer>ws_timer_heart_ = nullptr;
 			std::shared_ptr<IProtocol_parser>protocol_parser_ = nullptr;

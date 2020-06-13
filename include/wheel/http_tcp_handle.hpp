@@ -158,7 +158,8 @@ namespace wheel {
 					}
 
 					//SSL_CTX_set_cipher_list(ssl_context.native_handle(),"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA");
-					ssl_socket_ = std::make_unique<boost::beast::ssl_stream<boost::beast::tcp_stream>>(*io_service_poll::get_instance().get_io_service(), ssl_context);
+					ssl_socket_ = traits::make_unique<boost::beast::ssl_stream<boost::beast::tcp_stream>>(
+						*io_service_poll::get_instance().get_io_service(), ssl_context);
 					//boost::system::error_code ec;
 					//ssl_socket_->set_verify_depth(10, ec);
 					//ssl_socket_->set_verify_mode(SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, ec);

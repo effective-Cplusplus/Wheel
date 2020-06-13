@@ -17,15 +17,6 @@ namespace wheel {
 			//json 字符串
 			websocket_server(const MessageEventObserver& recv_observer)
 				:recv_observer_(recv_observer) {
-				try
-				{
-					strand_ = std::make_shared<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
-				}
-				catch (const std::exception&ex)
-				{
-					std::cout << ex.what() << std::endl;
-					strand_ = nullptr;
-				}
 			}
 
 			//二进制流的格式
@@ -35,18 +26,11 @@ namespace wheel {
 				, header_size_(header_size)
 				, packet_size_offset_(packet_size_offset)
 				, packet_cmd_offset_(packet_cmd_offset) {
-				try
-				{
-					strand_ = std::make_shared<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
-				}
-				catch (const std::exception & ex)
-				{
-					std::cout << ex.what() << std::endl;
-					strand_ = nullptr;
-				}
+
 			}
 
 			~websocket_server() {
+				connects_.clear();
 			}
 
 			void init(int port, int connect_pool=1) {
@@ -58,10 +42,15 @@ namespace wheel {
 				//accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
 
 				boost::system::error_code ec;
-				accept_ = wheel::traits::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_poll::get_instance().get_io_service());
+				accept_ = traits::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_poll::get_instance().get_main_io_service());
 				
 				//一定要调用open否则会监听失败
-				accept_->open(boost::asio::ip::tcp::v4());
+				accept_->open(boost::asio::ip::tcp::v4(),ec);
+
+				if (!accept_->is_open()) {
+					return;
+				}
+
 				//端口复用
 				accept_->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), ec);
 				accept_->bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port), ec);
@@ -102,7 +91,7 @@ namespace wheel {
 				try
 				{
 					if (parser_type_ == json) {
-						new_session = std::make_shared<ws_tcp_handle>(strand_, header_size_, packet_size_offset_, packet_cmd_offset_);
+						new_session = std::make_shared<ws_tcp_handle>(header_size_, packet_size_offset_, packet_cmd_offset_);
 					}
 					else if (parser_type_ == bin) {
 						new_session = std::make_shared<ws_tcp_handle>(strand_);
@@ -134,15 +123,6 @@ namespace wheel {
 					make_session();
 					});
 			}
-			
-			void join_all() {
-				//加入之后需要等待,避免线程不回收
-				for (auto& t : ios_threads_) {
-					if (!t->joinable()) {
-						t->join();
-					}
-				}
-			}
 		private:
 			void on_connect(std::shared_ptr<ws_tcp_handle> handler) {
 				if (handler == nullptr) {
@@ -157,32 +137,30 @@ namespace wheel {
 				std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
 				std::time_t timestamp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count();
 
-				//lock_.test_and_set(std::memory_order_acquire);
+				lock_.test_and_set(std::memory_order_acquire);
 				connects_.emplace(handler, timestamp);
-				//lock_.clear(std::memory_order_release);
+				lock_.clear(std::memory_order_release);
 			}
 
 			void on_close(std::shared_ptr<ws_tcp_handle> handler, const boost::system::error_code& ec) {
 				//tcp主动断开 boost::asio::error::connection_reset
 				//websocket主动断开  boost::asio::error::connection_aborted
-				//lock_.test_and_set(std::memory_order_acquire);
+				lock_.test_and_set(std::memory_order_acquire);
 				auto iter_find = connects_.find(handler);
 				if (iter_find != connects_.end()) {
 					connects_.erase(iter_find);
 				}
 
-				//lock_.clear(std::memory_order_release);
+				lock_.clear(std::memory_order_release);
 			}
 		private:
 			int parser_type_ = json;
 			std::size_t header_size_ = 0;
 			std::size_t packet_size_offset_ = 0;
 			std::size_t packet_cmd_offset_ = 0;
-			//std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
+			std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
 			MessageEventObserver		recv_observer_;
 			std::unique_ptr<TCP::acceptor>accept_{};
-			std::vector<std::shared_ptr<std::thread>> ios_threads_;
-			std::shared_ptr<boost::asio::io_service::strand>strand_;
 			std::unordered_map<std::shared_ptr<ws_tcp_handle>, std::time_t>connects_;
 		};
   }
