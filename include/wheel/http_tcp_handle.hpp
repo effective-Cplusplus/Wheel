@@ -49,8 +49,8 @@ namespace wheel {
 #ifndef WHEEL_ENABLE_SSL 
 				socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*io_service_poll::get_instance().get_io_service());
 #endif
-				request_ = std::make_unique<request>();
-				response_ = std::make_unique<response>();
+				request_ = traits::make_unique<request>();
+				response_ = traits::make_unique<response>();
 
 #ifdef WHEEL_ENABLE_SSL
 				is_ssl_ = true;
@@ -228,8 +228,6 @@ namespace wheel {
 					return;
 				}
 
-				//ssl_socket_->next_layer().expires_after(std::chrono::milliseconds(200));
-				//ssl_socket_->next_layer().expires_never();
 				ssl_socket_->async_shutdown(boost::beast::bind_front_handler([self =shared_from_this()](const boost::system::error_code &ec) {
 					if (ec){
 						return;
@@ -243,7 +241,8 @@ namespace wheel {
 					return;
 				}
 
-				socket().async_read_some(std::move(boost::asio::buffer(request_->buffer(), request_->buffer_size())),[self = shared_from_this()](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+				socket().async_read_some(std::move(boost::asio::buffer(request_->buffer(), request_->buffer_size())),
+					[self = shared_from_this()](const boost::system::error_code& ec, std::size_t bytes_transferred) {
 					if (ec) {
 						self->release_session(boost::asio::error::make_error_code(
 							static_cast<boost::asio::error::basic_errors>(ec.value())));
