@@ -179,8 +179,8 @@ namespace wheel {
 					++write_count_;//1:等于0就相加，2:若此变量为1，说明有错误 
 
 					//自由函数boost::asio::async_write 如果指定buffer的length没有写完或出错会在run loop中一直执行
-					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()), std::bind(&tcp_handle::on_write, shared_from_this(),
-						std::placeholders::_1, std::placeholders::_2));
+					socket_->async_send(std::move(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size())), 
+						std::bind(&tcp_handle::on_write, shared_from_this(),std::placeholders::_1, std::placeholders::_2));
 				}
 
 				return 0;
@@ -385,7 +385,8 @@ namespace wheel {
 					return;
 				}
 
-				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0],g_packet_buffer_size),[self = shared_from_this()](const boost::system::error_code ec, size_t bytes_transferred) {
+				socket_->async_read_some(std::move(boost::asio::buffer(&recv_buffer_[0],g_packet_buffer_size)),
+					[self = shared_from_this()](const boost::system::error_code ec, size_t bytes_transferred) {
 					if (ec){
 						if (self->get_connect_status() == disconnect) {
 							return;
@@ -411,7 +412,8 @@ namespace wheel {
 					return;
 				}
 
-				socket_->async_connect(TCP::endpoint(ADDRESS::from_string(ip), port),[self = shared_from_this(), recv_observer, close_observer](const boost::system::error_code& ec) {
+				socket_->async_connect(TCP::endpoint(ADDRESS::from_string(ip), port),
+					[self = shared_from_this(), recv_observer, close_observer](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
@@ -449,8 +451,8 @@ namespace wheel {
 					//to_send(send_buffers.front()->data(), send_buffers.front()->size());
 
 					//有包就继续发,不管来多少，发多少
-					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()),std::bind(&tcp_handle::on_write, shared_from_this(),
-						std::placeholders::_1, std::placeholders::_2));
+					socket_->async_send(std::move(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size())),
+						std::bind(&tcp_handle::on_write, shared_from_this(),std::placeholders::_1, std::placeholders::_2));
 					++write_count_;
 				}
 
