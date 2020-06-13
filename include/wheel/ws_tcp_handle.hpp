@@ -41,7 +41,7 @@ namespace wheel {
 			// bin解析
 			ws_tcp_handle(std::size_t header_size,
 				std::size_t packet_size_offset, std::size_t packet_cmd_offset)
-				, connect_status_(-1)
+				:connect_status_(-1)
 				, header_size_(header_size)
 				, packet_size_offset_(packet_size_offset)
 				, packet_cmd_offset_(packet_cmd_offset)
@@ -68,8 +68,8 @@ namespace wheel {
 			}
 
 			//json 解析
-			ws_tcp_handle():
-				connect_status_(-1)
+			ws_tcp_handle()
+				:connect_status_(-1)
 			{
 				try
 				{
