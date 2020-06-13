@@ -127,15 +127,13 @@ namespace wheel {
 					return;
 				}
 
-				auto iter_find = connects_.find(handler);
-				if (iter_find != connects_.end()) {
-					return;
-				}
-
 				std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
 				std::time_t timestamp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count();
 				while (lock_.test_and_set(std::memory_order_acquire));
-				connects_.emplace(handler, timestamp);
+				auto iter_find = connects_.find(handler);
+				if (iter_find == connects_.end()) {
+					connects_.emplace(handler, timestamp);
+				}
 
 				lock_.clear(std::memory_order_release);
 			}
