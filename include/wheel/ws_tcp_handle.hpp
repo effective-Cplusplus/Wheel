@@ -68,14 +68,13 @@ namespace wheel {
 			}
 
 			//json 解析
-			ws_tcp_handle(const std::shared_ptr<boost::asio::io_service::strand>& strand)
-				:strand_(strand)
-				, connect_status_(-1)
+			ws_tcp_handle():
+				connect_status_(-1)
 			{
 				try
 				{
 					socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*io_service_poll::get_instance().get_io_service());
-					timer_ = wheel::traits::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
+					timer_ = traits::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
 				}
 				catch (const std::exception&ex){
 					std::cout << ex.what() << std::endl;
