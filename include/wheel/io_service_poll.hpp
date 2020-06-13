@@ -27,13 +27,18 @@ namespace wheel {
 		}
 
 		std::shared_ptr<boost::asio::io_service> get_io_service() {
-			auto io_service = io_services_[next_io_service_];
-			++next_io_service_;
-			if (next_io_service_ >= io_services_.size()) {
-				next_io_service_ = 1;
+			std::shared_ptr<boost::asio::io_service> ios;
+			if (io_services_.size()>1){
+				ios = io_services_[next_io_service_];
+				++next_io_service_;
+				if (next_io_service_ >= io_services_.size()) {
+					next_io_service_ = 1;
+				}
+			}else {
+				ios = io_services_[0];
 			}
-				
-			return std::move(io_service);
+
+			return std::move(ios);
 		}
 
 		void run(){
