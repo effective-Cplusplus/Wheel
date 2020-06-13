@@ -159,7 +159,7 @@ namespace wheel {
 
 					//SSL_CTX_set_cipher_list(ssl_context.native_handle(),"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA");
 					ssl_socket_ = traits::make_unique<boost::beast::ssl_stream<boost::beast::tcp_stream>>(
-						*io_service_poll::get_instance().get_io_service(), ssl_context);
+						*io_service_poll::get_instance().get_io_service(),ssl_context);
 					//boost::system::error_code ec;
 					//ssl_socket_->set_verify_depth(10, ec);
 					//ssl_socket_->set_verify_mode(SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, ec);
@@ -243,7 +243,7 @@ namespace wheel {
 					return;
 				}
 
-				socket().async_read_some(boost::asio::buffer(request_->buffer(), request_->buffer_size()),[self = shared_from_this()](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+				socket().async_read_some(std::move(boost::asio::buffer(request_->buffer(), request_->buffer_size())),[self = shared_from_this()](const boost::system::error_code& ec, std::size_t bytes_transferred) {
 					if (ec) {
 						self->release_session(boost::asio::error::make_error_code(
 							static_cast<boost::asio::error::basic_errors>(ec.value())));
@@ -299,7 +299,8 @@ namespace wheel {
 					return;
 				}
 
-				socket().async_read_some(boost::asio::buffer(request_->buffer(), request_->left_size()),[self = shared_from_this()](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+				socket().async_read_some(std::move(boost::asio::buffer(request_->buffer(), request_->left_size())),
+					[self = shared_from_this()](const boost::system::error_code& ec, std::size_t bytes_transferred) {
 					if (ec) {
 						self->release_session(boost::asio::error::make_error_code(
 							static_cast<boost::asio::error::basic_errors>(ec.value())));
@@ -398,7 +399,7 @@ namespace wheel {
 				}
 
 				response_->set_delay(false);
-				boost::asio::async_write(socket(), boost::asio::buffer(rep_str.data(), rep_str.size()),
+				boost::asio::async_write(socket(),std::move(boost::asio::buffer(rep_str.data(), rep_str.size())),
 					[head_not_complete, body_not_complete, left_body_len, this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
 						if (head_not_complete) {
 							do_read_head();
@@ -486,8 +487,8 @@ namespace wheel {
 
 			void do_read_octet_stream_body() {
 				//加了这个buffer不会溢出
-				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()), boost::asio::transfer_exactly(request_->left_body_len()),
-					[self = shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred) {
+				boost::asio::async_read(socket(),std::move(boost::asio::buffer(request_->buffer(), request_->left_body_len())), 
+					boost::asio::transfer_exactly(request_->left_body_len()),[self = shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
 							self->request_->set_state(data_proc_state::data_error);
 							self->response_back(status_type::bad_request, "read octet_stream data error");
@@ -608,7 +609,8 @@ namespace wheel {
 
 			void read_chunk_data(int64_t read_len) {
 				//boost::asio::async_read:注意参数填写,会超出内存越界
-				socket().async_read_some(boost::asio::buffer(request_->buffer(), read_len),[self = shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred) {
+				socket().async_read_some(std::move(boost::asio::buffer(request_->buffer(), read_len)),
+					[self = shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred) {
 					if (ec) {
 						self->response_back(status_type::bad_request, "read chunked data failure");
 						return;
@@ -643,7 +645,8 @@ namespace wheel {
 			}
 
 			void read_imcomplete_chunk_data(size_t read_len) {
-				socket().async_read_some(boost::asio::buffer(request_->get_buffer(0), read_len),[self = shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred) {
+				socket().async_read_some(std::move(boost::asio::buffer(request_->get_buffer(0), read_len)),
+					[self = shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred) {
 					if (ec) {
 						self->response_back(status_type::bad_request, "read chunked data failure");
 						return;
@@ -679,8 +682,8 @@ namespace wheel {
 
 			void do_read_form_urlencoded() {
 				//加了这个buffer不会溢出
-				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()), boost::asio::transfer_exactly(request_->left_body_len()),
-					[self = shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred) {
+				boost::asio::async_read(socket(),std::move(boost::asio::buffer(request_->buffer(), request_->left_body_len())), 
+					boost::asio::transfer_exactly(request_->left_body_len()),[self = shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
 							self->response_back(status_type::bad_request, "read form_urlencoded data error");
 							return;
@@ -764,8 +767,8 @@ namespace wheel {
 			void do_read_multipart() {
 				request_->fit_size();
 				//boost::asio::transfer_exactly,加了这个buffer不会溢出
-				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()), boost::asio::transfer_exactly(request_->left_body_len()),
-					[self = shared_from_this()](boost::system::error_code ec, std::size_t length) {
+				boost::asio::async_read(socket(),std::move(boost::asio::buffer(request_->buffer(), request_->left_body_len())),
+					boost::asio::transfer_exactly(request_->left_body_len()),[self = shared_from_this()](boost::system::error_code ec, std::size_t length) {
 						if (ec) {
 							self->request_->set_state(data_proc_state::data_error);
 							self->response_back(status_type::bad_request, "read multipart data error");
@@ -791,8 +794,8 @@ namespace wheel {
 			}
 
 			void do_read_part_data() {
-				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_size()), boost::asio::transfer_exactly(request_->left_body_size()),
-					[self = shared_from_this()](boost::system::error_code ec, std::size_t length) {
+				boost::asio::async_read(socket(),std::move(boost::asio::buffer(request_->buffer(), request_->left_body_size())),
+					boost::asio::transfer_exactly(request_->left_body_size()),[self = shared_from_this()](boost::system::error_code ec, std::size_t length) {
 						if (ec) {
 							self->response_back(status_type::bad_request, "read multipart data error");
 							return;
@@ -837,8 +840,8 @@ namespace wheel {
 
 			void do_read_body() {
 				//加了boost::asio::transfer_exactly 不会发生buffer数组越界
-				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()), boost::asio::transfer_exactly(request_->left_body_len()),
-					[self = shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred) {
+				boost::asio::async_read(socket(),std::move(boost::asio::buffer(request_->buffer(), request_->left_body_len())),
+					boost::asio::transfer_exactly(request_->left_body_len()),[self = shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
 							self->response_back(status_type::bad_request, "body read failure");
 							return;
@@ -918,8 +921,8 @@ namespace wheel {
 					chunked_header.append(str);
 				}
 
-				boost::asio::async_write(socket(), boost::asio::buffer(chunked_header.data(), chunked_header.size()), boost::asio::transfer_exactly(chunked_header.size()),
-					[self = shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred) {
+				boost::asio::async_write(socket(),std::move(boost::asio::buffer(chunked_header.data(), chunked_header.size())), 
+					boost::asio::transfer_exactly(chunked_header.size()),[self = shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
 							self->response_back(status_type::bad_gateway, "write chunked header failure");
 							return;
@@ -929,54 +932,6 @@ namespace wheel {
 						});
 			}
 
-			/*********************此接口暂时没有后面待扩展********************************/
-			void do_chunked_write_body() {
-				std::list<std::string> buffers = response_->get_chunked_data();
-				if (buffers.empty()) {
-					response_back(status_type::bad_gateway, "write chunked data failure");
-					return;
-				}
-
-				const std::string data = buffers.front();
-				buffers.pop_front();
-				boost::asio::async_write(socket(), boost::asio::buffer(data.data(), data.size()), boost::asio::transfer_exactly(data.size()),
-					[self = shared_from_this(), buffer = std::move(buffers)](const boost::system::error_code& ec, size_t bytes_transferred) {
-					if (ec) {
-						self->response_back(status_type::bad_gateway, "write chunked data failure");
-						return;
-					}
-
-					if (buffer.empty()) {
-						self->do_read();
-						return;
-					}
-
-					self->handler_chunked_write_body(buffer);
-				});
-			}
-
-			/*********************此接口暂时没有后面待扩展********************************/
-			void handler_chunked_write_body(std::list<std::string> buffers) {
-				const std::string data = buffers.front();
-				buffers.pop_front();
-
-				boost::asio::async_write(socket(), boost::asio::buffer(data.data(), data.size()), boost::asio::transfer_exactly(data.size()),
-					[self = shared_from_this(), buffers = std::move(buffers)](const boost::system::error_code& ec, size_t bytes_transferred) {
-					if (ec) {
-						self->response_back(status_type::bad_gateway, "write chunked data failure");
-						return;
-					}
-
-					if (buffers.empty()) {
-						self->do_read();
-						return;
-					}
-
-					self->handler_chunked_write_body(buffers);
-				});
-			}
-
-
 			void do_no_chunked_write() {
 				const std::string rep_str = response_->response_str();
 				if (rep_str.empty()) {
@@ -985,8 +940,9 @@ namespace wheel {
 					return;
 				}
 
-				boost::asio::async_write(socket(), boost::asio::buffer(rep_str.data(), rep_str.size()),boost::asio::transfer_exactly(rep_str.size()),
-					[self = shared_from_this()](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+				boost::asio::async_write(socket(),std::move(boost::asio::buffer(rep_str.data(), rep_str.size())),
+					boost::asio::transfer_exactly(rep_str.size()),[self = shared_from_this()]
+					(const boost::system::error_code& ec, std::size_t bytes_transferred) {
 					self->handle_write(ec);
 					});
 			}
