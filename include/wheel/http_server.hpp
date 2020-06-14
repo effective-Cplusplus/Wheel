@@ -20,6 +20,7 @@ namespace wheel {
 
 			~http_server() {
 				connects_.clear();
+				io_service_poll::get_instance().stop();
 			}
 
 			void listen(int port,int connects=1) {

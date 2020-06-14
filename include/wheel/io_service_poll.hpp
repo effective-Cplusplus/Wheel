@@ -18,7 +18,7 @@ namespace wheel {
 		}
 
 		~io_service_poll() {
-			stop();
+
 		}
 
 		std::shared_ptr<boost::asio::io_service> get_main_io_service()const{
@@ -68,6 +68,17 @@ namespace wheel {
 			get_io_service()->dispatch(handler);
 		}
 
+		void stop() {
+			works_.clear();
+
+			size_t count = io_services_.size();
+			for (size_t index = 0; index < count; ++index) {
+				io_services_[index]->stop();
+			}
+
+			io_services_.clear();
+		}
+
 		io_service_poll(const io_service_poll&) = delete;
 		io_service_poll& operator=(const io_service_poll&) = delete;
 		io_service_poll(const io_service_poll&&) = delete;
@@ -88,17 +99,6 @@ namespace wheel {
 				std::cout << ex.what() << std::endl;
 				exit(0);
 			}
-		}
-	private:
-		void stop(){
-			works_.clear();
-
-			size_t count = io_services_.size();
-			for (size_t index =0;index< count;++index){
-				io_services_[index]->stop();
-			}
-
-			io_services_.clear();
 		}
 	private:
 		using io_service_ptr = std::shared_ptr<boost::asio::io_context>;
