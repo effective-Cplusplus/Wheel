@@ -58,6 +58,16 @@ namespace wheel {
 			}	
 		}
 
+		template <typename CompletionHandler>
+		void post(BOOST_ASIO_MOVE_ARG(CompletionHandler) handler){
+			get_instance().get_io_service()->post(handler);
+		}
+
+		template <typename CompletionHandler>
+		void dispatch(BOOST_ASIO_MOVE_ARG(CompletionHandler) handler) {
+			get_instance().get_io_service()->dispatch(handler);
+		}
+
 		io_service_poll(const io_service_poll&) = delete;
 		io_service_poll& operator=(const io_service_poll&) = delete;
 		io_service_poll(const io_service_poll&&) = delete;
