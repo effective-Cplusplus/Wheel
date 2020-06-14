@@ -43,6 +43,11 @@ namespace wheel {
 				accept_->set_option(boost::asio::detail::socket_option::integer<IPPROTO_TCP, TCP_FASTOPEN>(qlen), ec);
 
 				accept_->bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port),ec);
+				if (ec){
+					std::cout << "bind fail" << std::endl;
+					return;
+				}
+
 				accept_->listen(boost::asio::socket_base::max_connections, ec);
 				if (ec){
 					std::cout << "服务器监听失败:"<<ec.message() << std::endl;
