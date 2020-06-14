@@ -141,7 +141,7 @@ namespace wheel {
 
 				ssl_conf_data_= read_cert_data(conf);
 				
-				size_t ssl_options = boost::asio::ssl::context::default_workarounds
+				unsigned long  ssl_options = boost::asio::ssl::context::default_workarounds
 					| boost::asio::ssl::context::no_sslv3
 					| boost::asio::ssl::context::no_sslv2
 					| boost::asio::ssl::context::no_compression

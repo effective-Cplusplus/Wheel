@@ -32,7 +32,7 @@ namespace wheel {
 			std::string key_data;           //private key
 			std::string passp_hrase_data;        //password;//私有key，是否输入密码
 			std::string pem_data;           //*.pem文件
-			size_t ssl_options;
+			unsigned long ssl_options;
 		};
 
 		namespace fs = boost::filesystem;
