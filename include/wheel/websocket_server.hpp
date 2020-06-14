@@ -120,7 +120,8 @@ namespace wheel {
 						return;
 					}
 
-					new_session->activate();
+					io_service_poll::get_instance().dispatch(std::bind(&ws_tcp_handle::activate, new_session));
+					//new_session->activate();
 					make_session();
 					});
 			}
