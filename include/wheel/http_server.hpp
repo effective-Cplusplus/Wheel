@@ -189,8 +189,8 @@ namespace wheel {
 					if (ec) {
 						return;
 					}
-
-					new_session->activate();
+					
+					io_service_poll::get_instance().dispatch(std::bind(&http_tcp_handle::activate, new_session));
 					make_session();
 					});
 			}
