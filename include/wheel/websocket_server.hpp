@@ -31,6 +31,7 @@ namespace wheel {
 
 			~websocket_server() {
 				connects_.clear();
+				io_service_poll::get_instance().stop();
 			}
 
 			void init(int port, int connect_pool=1) {
