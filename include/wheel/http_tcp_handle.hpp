@@ -32,6 +32,7 @@ namespace wheel {
 			std::string key_data;           //private key
 			std::string passp_hrase_data;        //password;//私有key，是否输入密码
 			std::string pem_data;           //*.pem文件
+			size_t ssl_options;
 		};
 
 		namespace fs = boost::filesystem;
@@ -121,16 +122,11 @@ namespace wheel {
 
 #ifdef WHEEL_ENABLE_SSL
 			bool init_ssl_context(const ssl_configure_data& ssl_conf) {
-				unsigned long ssl_options = boost::asio::ssl::context::default_workarounds
-					| boost::asio::ssl::context::no_sslv3
-					|boost::asio::ssl::context::no_sslv2
-					|boost::asio::ssl::context::no_compression
-					| boost::asio::ssl::context::single_dh_use;
 				try {
 					boost::asio::ssl::context ssl_context(boost::asio::ssl::context::tlsv12);//tsl1.2
 					//boost::asio::ssl::context ssl_context(boost::asio::ssl::context::tlsv13);//tsl1.3
 					//boost::asio::ssl::context ssl_context(boost::asio::ssl::context::sslv23);
-					ssl_context.set_options(ssl_options);
+					ssl_context.set_options(ssl_conf.ssl_options);
 					if (!ssl_conf.passp_hrase_data.empty()) {
 						ssl_context.set_password_callback([ssl_conf](size_t, boost::asio::ssl::context_base::password_purpose) {return ssl_conf.passp_hrase_data; });
 					}
