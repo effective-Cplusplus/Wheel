@@ -18,9 +18,7 @@ namespace wheel {
 			return instance;
 		}
 
-		~io_service_poll() {
-
-		}
+		~io_service_poll() = default;
 
 		std::shared_ptr<boost::asio::io_service> get_main_io_service()const{
 			auto ptr = io_services_[0];
