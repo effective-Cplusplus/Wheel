@@ -26,7 +26,7 @@ namespace wheel {
 		}
 
 		std::shared_ptr<boost::asio::io_service> get_io_service() {
-			while (lock_.test_and_set(std::memory_order_acquire));
+			//while (lock_.test_and_set(std::memory_order_acquire));
 			std::shared_ptr<boost::asio::io_service> ios;
 			if (io_services_.size()>1){
 				ios = io_services_[next_io_service_];
@@ -38,7 +38,7 @@ namespace wheel {
 				ios = io_services_[0];
 			}
 
-			lock_.clear(std::memory_order_release);
+			//lock_.clear(std::memory_order_release);
 			return std::move(ios);
 		}
 
@@ -106,7 +106,7 @@ namespace wheel {
 		using work_ptr = std::unique_ptr<boost::asio::io_context::work>;
 
 		size_t next_io_service_ = 1;
-		std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
+		//std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
 		std::vector<io_service_ptr>io_services_;
 		std::vector<work_ptr>works_;
 	};
