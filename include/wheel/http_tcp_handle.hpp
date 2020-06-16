@@ -199,7 +199,7 @@ namespace wheel {
 					return;
 				}
 
-				//boost::beast::get_lowest_layer(*ssl_socket_).expires_after(std::chrono::seconds(30));
+				boost::beast::get_lowest_layer(*ssl_socket_).expires_after(std::chrono::seconds(10));
 				SSL_set_mode(ssl_socket_->native_handle(), SSL_MODE_RELEASE_BUFFERS);
 				ssl_socket_->async_handshake(boost::asio::ssl::stream_base::server,[self = shared_from_this()](const boost::system::error_code& error) {
 					if (error) {
@@ -212,6 +212,7 @@ namespace wheel {
 						}
 					}
 
+					boost::beast::get_lowest_layer(*self->ssl_socket_).expires_never();
 					self->has_shake_ = true;
 					self->async_read_some();
 				});
@@ -227,7 +228,7 @@ namespace wheel {
 				ssl_socket_->async_shutdown(
 					boost::beast::bind_front_handler([self =shared_from_this()](const boost::system::error_code &ec) {
 					if (ec){
-						std::cout << ec.message() << std::endl;
+						//std::cout << ec.message() << std::endl;
 						return;
 					}
 					
