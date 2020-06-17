@@ -241,6 +241,9 @@ namespace wheel {
 					return;
 				}
 
+#ifdef WHEEL_ENABLE_SSL
+				boost::beast::get_lowest_layer(*ssl_socket_).expires_after(std::chrono::seconds(30));
+#endif
 				socket().async_read_some(std::move(boost::asio::buffer(request_->buffer(), request_->buffer_size())),
 					[self = shared_from_this()](const boost::system::error_code& ec, std::size_t bytes_transferred) {
 					if (ec) {
