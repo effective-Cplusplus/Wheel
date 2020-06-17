@@ -1180,23 +1180,23 @@ namespace wheel {
 				return true;
 			}
 		private:
-			bool need_response_time_ = false;
-			bool is_multi_part_file_;
-			bool has_shake_ = false;
-			bool keep_alive_ = false;
-			bool is_receve_all_chunked = false;
-			content_type req_content_type_;
+			bool need_response_time_{false};
+			bool is_multi_part_file_{false};
+			bool has_shake_{false};
+			bool keep_alive_{false};
+			bool is_receve_all_chunked{false};
+			content_type req_content_type_{content_type::unknown};
 			const std::string& static_dir_;
 			const http_handler& http_handler_;
-			ConnectEventObserver		connect_observer_ =nullptr;
-			CloseEventObserver			close_observer_ = nullptr;
-			size_t len_ = 0;
-			size_t last_transfer_ = 0;
+			ConnectEventObserver		connect_observer_{};
+			CloseEventObserver			close_observer_{};
+			size_t len_{0};
+			size_t last_transfer_ = { 0 };
 			multipart_reader multipart_parser_;
 			std::unique_ptr<request>request_{};
-			std::unique_ptr<response>response_;
-			std::function<bool(request&, response&)>* upload_check_ = nullptr;
-			std::function<void(request&, std::string&)> multipart_begin_ = nullptr;
+			std::unique_ptr<response>response_{};
+			std::function<bool(request&, response&)>* upload_check_{};
+			std::function<void(request&, std::string&)> multipart_begin_{};
 #ifdef WHEEL_ENABLE_SSL
 			std::unique_ptr<boost::beast::ssl_stream<boost::beast::tcp_stream>> ssl_socket_{};
 #else
