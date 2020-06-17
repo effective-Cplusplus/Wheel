@@ -69,8 +69,13 @@ namespace wheel {
 				close();
 #ifdef WHEEL_ENABLE_SSL
 				ssl_socket_ = nullptr;
+#else
+				socket_ = nullptr;
 #endif
 				close_observer_ = nullptr;
+				connect_observer_ = nullptr;
+				request_ = nullptr;
+				response_ = nullptr;
 			}
 
 			void activate() {
