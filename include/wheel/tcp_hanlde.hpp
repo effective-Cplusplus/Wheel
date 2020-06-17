@@ -477,16 +477,16 @@ namespace wheel {
 			}
 		private:
 			std::atomic_flag data_lock_ = ATOMIC_FLAG_INIT;
-			int connect_status_ = disconnect;
-			int seconds_ = g_client_reconnect_seconds;//客户端设置重连
-			int parser_type_ = 0; //后续扩展0:二进制流
-			std::size_t header_size_;
-			std::size_t packet_size_offset_;
-			std::size_t packet_cmd_offset_;
-			std::int32_t write_count_ = 0;
-			ConnectEventObserver		connect_observer_;
-			MessageEventObserver		recv_observer_;
-			CloseEventObserver			close_observer_;
+			int connect_status_{ disconnect };
+			int seconds_{ g_client_reconnect_seconds };//客户端设置重连
+			int parser_type_{0}; //后续扩展0:二进制流
+			std::size_t header_size_{0};
+			std::size_t packet_size_offset_{0};
+			std::size_t packet_cmd_offset_{0};
+			std::int32_t write_count_{0};
+			ConnectEventObserver		connect_observer_{};
+			MessageEventObserver		recv_observer_{};
+			CloseEventObserver			close_observer_{};
 			std::unique_ptr<char[]>recv_buffer_{};
 			std::unique_ptr<boost::asio::steady_timer> timer_{};
 			std::shared_ptr<TCP::socket> socket_{};
