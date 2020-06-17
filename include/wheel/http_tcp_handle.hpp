@@ -1009,7 +1009,7 @@ namespace wheel {
 			void check_keep_alive() {
 				auto req_conn_hdr = request_->get_header_value("connection");
 				if (request_->is_http11()) {
-					keep_alive_ = req_conn_hdr.empty() || !wheel::unit::iequal(req_conn_hdr.data(), req_conn_hdr.size(), "close");
+					keep_alive_ = !req_conn_hdr.empty() && !wheel::unit::iequal(req_conn_hdr.data(), req_conn_hdr.size(), "close");
 					return;
 				}
 
