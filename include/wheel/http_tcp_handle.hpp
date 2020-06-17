@@ -340,20 +340,20 @@ namespace wheel {
 				check_keep_alive();
 				if (ret == parse_status::not_complete) {
 					do_read_head();
+					return;
 				}
-				else {
-					constexpr int offset = 4;
-					if (bytes_transferred > ret + offset) {
-						std::string str(request_->data() + ret, offset);
-						if (str == "GET " || str == "POST") {
-							handle_pipeline(ret, bytes_transferred);
-							return;
-						}
-					}
 
-					request_->set_last_len(len_);
-					handle_request_on_respone(bytes_transferred);
+				constexpr int offset = 4;
+				if (bytes_transferred > ret + offset) {
+					std::string str(request_->data() + ret, offset);
+					if (str == "GET " || str == "POST") {
+						handle_pipeline(ret, bytes_transferred);
+						return;
+					}
 				}
+
+				request_->set_last_len(len_);
+				handle_request_on_respone(bytes_transferred);
 			}
 
 			void handle_pipeline(int ret, std::size_t bytes_transferred) {
