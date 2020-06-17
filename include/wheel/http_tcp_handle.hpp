@@ -487,12 +487,12 @@ namespace wheel {
 					request_->set_state(data_proc_state::data_end);
 					call_back();
 					do_write();
+					return;
 				}
-				else {
-					request_->fit_size();
-					request_->set_current_size(0);
-					do_read_octet_stream_body();
-				}
+
+				request_->fit_size();
+				request_->set_current_size(0);
+				do_read_octet_stream_body();
 			}
 
 			void do_read_octet_stream_body() {
@@ -514,10 +514,10 @@ namespace wheel {
 							self->request_->set_state(data_proc_state::data_end);
 							self->call_back();
 							self->do_write();
+							return;
 						}
-						else {
-							self->do_read_octet_stream_body();
-						}
+
+						self->do_read_octet_stream_body();
 						});
 			}
 
@@ -577,12 +577,12 @@ namespace wheel {
 
 				if (request_->has_recieved_all()) {
 					handle_url_urlencoded_body();
+					return;
 				}
-				else {
-					request_->expand_size();
-					request_->reduce_left_body_size((bytes_transferred - request_->header_len()));
-					do_read_form_urlencoded();
-				}
+
+				request_->expand_size();
+				request_->reduce_left_body_size((bytes_transferred - request_->header_len()));
+				do_read_form_urlencoded();
 			}
 
 			void handle_chunked() {
@@ -704,10 +704,10 @@ namespace wheel {
 
 						if (self->request_->body_finished()) {
 							self->handle_url_urlencoded_body();
+							return;
 						}
-						else {
-							self->do_read_form_urlencoded();
-						}
+
+						self->do_read_form_urlencoded();
 						});
 			}
 
@@ -734,18 +734,18 @@ namespace wheel {
 
 				if (request_->has_recieved_all()) {
 					handle_body();
+					return;
 				}
-				else {
-					request_->expand_size();
 
-					size_t part_size = request_->current_size() - request_->header_len();
-					if (part_size == -1) {
-						return;
-					}
+				request_->expand_size();
 
-					request_->reduce_left_body_size(part_size);
-					do_read_body();
+				size_t part_size = request_->current_size() - request_->header_len();
+				if (part_size == -1) {
+					return;
 				}
+
+				request_->reduce_left_body_size(part_size);
+				do_read_body();
 			}
 
 			void handle_multipart() {
@@ -767,11 +767,11 @@ namespace wheel {
 				if (request_->has_recieved_all_part()) {
 					call_back();
 					do_write();
+					return;
 				}
-				else {
-					request_->set_current_size(0);
-					do_read_multipart();
-				}
+
+				request_->set_current_size(0);
+				do_read_multipart();
 			}
 
 			void do_read_multipart() {
@@ -818,13 +818,13 @@ namespace wheel {
 							return;
 						}
 
-						if (!self->request_->body_finished()) {
-							self->do_read_part_data();
-						}
-						else {
+						if (self->request_->body_finished()) {
 							self->call_back();
 							self->do_write();
+							return;
 						}
+
+						self->do_read_part_data();
 						});
 			}
 
@@ -862,10 +862,10 @@ namespace wheel {
 
 						if (self->request_->body_finished()) {
 							self->handle_body();
+							return;
 						}
-						else {
-							self->do_read_body();
-						}
+
+						self->do_read_body();
 						});
 			}
 
