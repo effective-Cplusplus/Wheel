@@ -281,7 +281,8 @@ namespace wheel {
 
 			void release_session(const boost::system::error_code& ec) {
 				//shared_from_this不能被调两次
-				if (close_observer_ == nullptr ) {
+				if (close_observer_ == nullptr || 
+					socket_ == nullptr) {
 					return;
 				}
 
