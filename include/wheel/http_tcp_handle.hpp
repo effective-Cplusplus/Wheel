@@ -1,14 +1,10 @@
 #ifndef http_tcp_handle_h__
 #define http_tcp_handle_h__
 
-#ifdef WHEEL_ENABLE_SSL
-#include <boost/asio/ssl.hpp>
 #include <boost/beast.hpp>
 #include <boost/beast/ssl.hpp>
-#endif
 #include <iostream>
 #include <memory>
-#include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
 #include "unit.hpp"
 #include "http_response.hpp"
@@ -48,7 +44,7 @@ namespace wheel {
 				const ssl_configure_data& ssl_conf, const bool need_response_time) :http_handler_(handle)
 				,static_dir_(static_dir), need_response_time_(need_response_time){
 #ifndef WHEEL_ENABLE_SSL 
-				socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*io_service_poll::get_instance().get_io_service());
+				socket_ = std::make_shared<boost::beast::tcp_stream>(*io_service_poll::get_instance().get_io_service());
 #endif
 				request_ = traits::make_unique<request>();
 				response_ = traits::make_unique<response>();
@@ -66,13 +62,15 @@ namespace wheel {
 #ifdef WHEEL_ENABLE_SSL
 				return &boost::beast::get_lowest_layer(*ssl_socket_).socket();
 #else
-				return socket_.get();
+				return &boost::beast::get_lowest_layer(*socket_).socket();
 #endif
 			}
 
 			~http_tcp_handle() {
 				close();
+#ifdef WHEEL_ENABLE_SSL
 				ssl_socket_ = nullptr;
+#endif
 				close_observer_ = nullptr;
 			}
 
@@ -189,7 +187,12 @@ namespace wheel {
 #endif
 
 				}else {
-					async_read_some();
+					boost::beast::net::dispatch(
+						socket_->get_executor(),
+						boost::beast::bind_front_handler(
+							&http_tcp_handle::async_read_some,
+							shared_from_this())
+					);
 				}
 			}
 
@@ -243,6 +246,8 @@ namespace wheel {
 
 #ifdef WHEEL_ENABLE_SSL
 				boost::beast::get_lowest_layer(*ssl_socket_).expires_after(std::chrono::seconds(30));
+#else
+				boost::beast::get_lowest_layer(*socket_).expires_after(std::chrono::seconds(30));
 #endif
 				socket().async_read_some(std::move(boost::asio::buffer(request_->buffer(), request_->buffer_size())),
 					[self = shared_from_this()](const boost::system::error_code& ec, std::size_t bytes_transferred) {
@@ -266,11 +271,11 @@ namespace wheel {
 
 				boost::system::error_code ignored_ec;
 #ifndef WHEEL_ENABLE_SSL
-				if (socket_->is_open()) {
-					socket_->shutdown(
+				if (socket_->socket().is_open()) {
+					socket_->socket().shutdown(
 						boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
 
-					socket_->close(ignored_ec);
+					socket_->socket().close(ignored_ec);
 				}
 #endif
 			}
@@ -876,8 +881,9 @@ namespace wheel {
 				socket_id.set_option(option,ec);
 				socket_id.set_option(linger_option, ec);
 #else
-				socket_->set_option(option, ec);
-				socket_->set_option(linger_option, ec);
+				auto& socket_id = boost::beast::get_lowest_layer(*socket_).socket();
+				socket_id.set_option(option, ec);
+				socket_id.set_option(linger_option, ec);
 
 #endif
 				//有time_wait状态下，可端口短时间可以重用
@@ -892,7 +898,8 @@ namespace wheel {
 				auto& socket_id = boost::beast::get_lowest_layer(*ssl_socket_).socket();
 				socket_id.set_option(readdress,ec);
 #else
-				socket_->set_option(readdress, ec);
+				auto& socket_id = boost::beast::get_lowest_layer(*socket_).socket();
+				socket_id.set_option(readdress, ec);
 #endif
 			}
 
@@ -1191,7 +1198,7 @@ namespace wheel {
 #ifdef WHEEL_ENABLE_SSL
 			std::unique_ptr<boost::beast::ssl_stream<boost::beast::tcp_stream>> ssl_socket_{};
 #else
-			std::shared_ptr<boost::asio::ip::tcp::socket> socket_{};
+			std::shared_ptr<boost::beast::tcp_stream> socket_{};
 #endif
 		};
 	}
