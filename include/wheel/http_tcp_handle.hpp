@@ -50,7 +50,6 @@ namespace wheel {
 				response_ = traits::make_unique<response>();
 
 #ifdef WHEEL_ENABLE_SSL
-				is_ssl_ = true;
 				if (!init_ssl_context(ssl_conf)) {
 					exit(0);
 				}
@@ -177,23 +176,23 @@ namespace wheel {
 
 				request_->reset();
 				response_->reset();
-				if (is_ssl_ && !has_shake_) {
+
 #ifdef WHEEL_ENABLE_SSL
+				if (!has_shake_) {
 					boost::beast::net::dispatch(
 						ssl_socket_->get_executor(),
 						boost::beast::bind_front_handler(
 							&http_tcp_handle::async_handshake,
 							shared_from_this()));
-#endif
-
-				}else {
+				}
+#else
 					boost::beast::net::dispatch(
 						socket_->get_executor(),
 						boost::beast::bind_front_handler(
 							&http_tcp_handle::async_read_some,
 							shared_from_this())
 					);
-				}
+#endif
 			}
 
 			void async_handshake() {
@@ -1179,7 +1178,6 @@ namespace wheel {
 		private:
 			bool need_response_time_ = false;
 			bool is_multi_part_file_;
-			bool is_ssl_ = false;
 			bool has_shake_ = false;
 			bool keep_alive_ = false;
 			bool is_receve_all_chunked = false;
