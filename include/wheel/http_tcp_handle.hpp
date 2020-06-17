@@ -184,15 +184,10 @@ namespace wheel {
 						boost::beast::bind_front_handler(
 							&http_tcp_handle::async_handshake,
 							shared_from_this()));
+					return;
 				}
-#else
-					boost::beast::net::dispatch(
-						socket_->get_executor(),
-						boost::beast::bind_front_handler(
-							&http_tcp_handle::async_read_some,
-							shared_from_this())
-					);
 #endif
+				async_read_some();
 			}
 
 			void async_handshake() {
