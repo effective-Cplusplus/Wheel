@@ -41,6 +41,8 @@ namespace wheel {
 
 				int qlen = 5;
 				accept_->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), ec);
+				boost::asio::ip::tcp::no_delay delay_option(true);
+				accept_->set_option(delay_option, ec);
 				accept_->set_option(boost::asio::detail::socket_option::integer<IPPROTO_TCP, TCP_FASTOPEN>(qlen), ec);
 
 				accept_->bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port),ec);
