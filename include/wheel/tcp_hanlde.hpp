@@ -33,9 +33,8 @@ namespace wheel {
 		class tcp_handle :public std::enable_shared_from_this<tcp_handle>
 		{
 		public:
-			tcp_handle(const std::shared_ptr<boost::asio::io_service::strand>&strand,std::size_t header_size,std::size_t packet_size_offset, std::size_t packet_cmd_offset)
-				:strand_(strand)
-				, connect_status_(-1)
+			tcp_handle(std::size_t header_size,std::size_t packet_size_offset, std::size_t packet_cmd_offset)
+				:connect_status_(-1)
 				, header_size_(header_size)
 				, packet_size_offset_(packet_size_offset)
 				, packet_cmd_offset_(packet_cmd_offset)
@@ -43,7 +42,7 @@ namespace wheel {
 				try
 				{
 					socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*io_service_poll::get_instance().get_io_service());
-					timer_ = wheel::traits ::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
+					timer_ = traits ::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
 				}catch (std::exception &ex){
 					std::cout << ex.what() << std::endl;
 					socket_ = nullptr;
@@ -180,8 +179,8 @@ namespace wheel {
 					++write_count_;//1:等于0就相加，2:若此变量为1，说明有错误 
 
 					//自由函数boost::asio::async_write 如果指定buffer的length没有写完或出错会在run loop中一直执行
-					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()), std::bind(&tcp_handle::on_write, shared_from_this(),
-						std::placeholders::_1, std::placeholders::_2));
+					socket_->async_send(std::move(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size())), 
+						std::bind(&tcp_handle::on_write, shared_from_this(),std::placeholders::_1, std::placeholders::_2));
 				}
 
 				return 0;
@@ -219,7 +218,7 @@ namespace wheel {
 				}
 
 				timer_->expires_from_now(std::chrono::seconds(seconds_));
-				timer_->async_wait(strand_->wrap([self = shared_from_this(), ip, port, recv_observer, close_observer](const boost::system::error_code& ec) {
+				timer_->async_wait([self = shared_from_this(), ip, port, recv_observer, close_observer](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
@@ -230,7 +229,7 @@ namespace wheel {
 
 					self->async_connect(ip, port, recv_observer, close_observer);
 					self->reconect_server(ip, port, recv_observer, close_observer);
-					}));
+					});
 			}
 
 			void register_connect_observer(ConnectEventObserver observer) {
@@ -386,7 +385,8 @@ namespace wheel {
 					return;
 				}
 
-				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0],g_packet_buffer_size), strand_->wrap([self = shared_from_this()](const boost::system::error_code ec, size_t bytes_transferred) {
+				socket_->async_read_some(std::move(boost::asio::buffer(&recv_buffer_[0],g_packet_buffer_size)),
+					[self = shared_from_this()](const boost::system::error_code ec, size_t bytes_transferred) {
 					if (ec){
 						if (self->get_connect_status() == disconnect) {
 							return;
@@ -405,14 +405,15 @@ namespace wheel {
 					}
 
 					self->to_read();
-					}));
+					});
 			}
 			void async_connect(std::string ip, int port, const MessageEventObserver& recv_observer, const CloseEventObserver& close_observer) {
 				if (socket_ == nullptr){
 					return;
 				}
 
-				socket_->async_connect(TCP::endpoint(ADDRESS::from_string(ip), port), strand_->wrap([self = shared_from_this(), recv_observer, close_observer](const boost::system::error_code& ec) {
+				socket_->async_connect(TCP::endpoint(ADDRESS::from_string(ip), port),
+					[self = shared_from_this(), recv_observer, close_observer](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
@@ -421,7 +422,7 @@ namespace wheel {
 					self->register_close_observer(close_observer);
 					self->register_recv_observer(recv_observer);
 					self->to_read();
-					}));
+					});
 			}
 			void on_write(const boost::system::error_code& ec, std::size_t size) {
 				--write_count_;
@@ -450,8 +451,8 @@ namespace wheel {
 					//to_send(send_buffers.front()->data(), send_buffers.front()->size());
 
 					//有包就继续发,不管来多少，发多少
-					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()), strand_->wrap(std::bind(&tcp_handle::on_write, shared_from_this(),
-						std::placeholders::_1, std::placeholders::_2)));
+					socket_->async_send(std::move(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size())),
+						std::bind(&tcp_handle::on_write, shared_from_this(),std::placeholders::_1, std::placeholders::_2));
 					++write_count_;
 				}
 
@@ -476,18 +477,17 @@ namespace wheel {
 			}
 		private:
 			std::atomic_flag data_lock_ = ATOMIC_FLAG_INIT;
-			int connect_status_ = disconnect;
-			int seconds_ = g_client_reconnect_seconds;//客户端设置重连
-			int parser_type_ = 0; //后续扩展0:二进制流
-			std::size_t header_size_;
-			std::size_t packet_size_offset_;
-			std::size_t packet_cmd_offset_;
-			std::int32_t write_count_ = 0;
-			ConnectEventObserver		connect_observer_;
-			MessageEventObserver		recv_observer_;
-			CloseEventObserver			close_observer_;
+			int connect_status_{ disconnect };
+			int seconds_{ g_client_reconnect_seconds };//客户端设置重连
+			int parser_type_{0}; //后续扩展0:二进制流
+			std::size_t header_size_{0};
+			std::size_t packet_size_offset_{0};
+			std::size_t packet_cmd_offset_{0};
+			std::int32_t write_count_{0};
+			ConnectEventObserver		connect_observer_{};
+			MessageEventObserver		recv_observer_{};
+			CloseEventObserver			close_observer_{};
 			std::unique_ptr<char[]>recv_buffer_{};
-			std::shared_ptr<boost::asio::io_service::strand>strand_{};
 			std::unique_ptr<boost::asio::steady_timer> timer_{};
 			std::shared_ptr<TCP::socket> socket_{};
 			std::shared_ptr<IProtocol_parser>protocol_parser_{};

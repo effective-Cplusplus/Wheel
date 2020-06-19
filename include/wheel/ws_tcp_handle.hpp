@@ -39,10 +39,9 @@ namespace wheel {
 		{
 		public:
 			// bin解析
-			ws_tcp_handle(const std::shared_ptr<boost::asio::io_service::strand>& strand, std::size_t header_size,
+			ws_tcp_handle(std::size_t header_size,
 				std::size_t packet_size_offset, std::size_t packet_cmd_offset)
-				:strand_(strand)
-				, connect_status_(-1)
+				:connect_status_(-1)
 				, header_size_(header_size)
 				, packet_size_offset_(packet_size_offset)
 				, packet_cmd_offset_(packet_cmd_offset)
@@ -51,7 +50,8 @@ namespace wheel {
 				{
 					socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*io_service_poll::get_instance().get_io_service());
 					timer_ = wheel::traits::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
-				}catch (const std::exception&ex){
+				}
+				catch (const std::exception & ex) {
 					std::cout << ex.what() << std::endl;
 					socket_ = nullptr;
 					timer_ = nullptr;
@@ -61,24 +61,24 @@ namespace wheel {
 					try
 					{
 						protocol_parser_ = create_object(0, header_size_, packet_size_offset_, packet_cmd_offset_);
-					}catch (const std::exception&ex){
-						std::cout << ex.what() <<std::endl;
+					}
+					catch (const std::exception & ex) {
+						std::cout << ex.what() << std::endl;
 						protocol_parser_ = nullptr;
 					}
 				}
 			}
 
 			//json 解析
-			ws_tcp_handle(const std::shared_ptr<boost::asio::io_service::strand>& strand)
-				:strand_(strand)
-				, connect_status_(-1)
+			ws_tcp_handle()
+				:connect_status_(-1)
 			{
 				try
 				{
 					socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*io_service_poll::get_instance().get_io_service());
-					timer_ = wheel::traits::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
+					timer_ = traits::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
 				}
-				catch (const std::exception&ex){
+				catch (const std::exception & ex) {
 					std::cout << ex.what() << std::endl;
 					socket_ = nullptr;
 					timer_ = nullptr;
@@ -114,7 +114,7 @@ namespace wheel {
 			}
 
 			int close_rs_endpoint() {
-				if (socket_ == nullptr ||!socket_->is_open()) {
+				if (socket_ == nullptr || !socket_->is_open()) {
 					return -1;
 				}
 
@@ -124,7 +124,7 @@ namespace wheel {
 			}
 
 			int close_recv_endpoint() {
-				if (socket_ == nullptr ||!socket_->is_open()) {
+				if (socket_ == nullptr || !socket_->is_open()) {
 					return -1;
 				}
 
@@ -135,14 +135,14 @@ namespace wheel {
 			}
 
 			int close_socket() {
-				if (socket_ == nullptr|| !socket_->is_open()) {
+				if (socket_ == nullptr || !socket_->is_open()) {
 					return -1;
 				}
 
 				boost::system::error_code e;
 				//socket_->close(e);
 				socket_->shutdown(
-						boost::asio::ip::tcp::socket::shutdown_both, e);
+					boost::asio::ip::tcp::socket::shutdown_both, e);
 				return e.value();
 			}
 
@@ -155,7 +155,7 @@ namespace wheel {
 					return -1;
 				}
 
-				if (count ==0 || data == nullptr){
+				if (count == 0 || data == nullptr) {
 					return -1;
 				}
 
@@ -163,11 +163,12 @@ namespace wheel {
 				//如果下一个包来，就可以放在末尾发，可以利用当前的内存，达到写多少，发多少的效果
 				std::shared_ptr<send_buffer>ptr = nullptr;
 				if (!send_buffers_.empty()) {
-					if (!send_buffers_.back()->write(data, count)){
+					if (!send_buffers_.back()->write(data, count)) {
 						try
 						{
 							ptr = std::make_shared<send_buffer>(data, count);
-						}catch (const std::exception&ex)
+						}
+						catch (const std::exception & ex)
 						{
 							std::cout << ex.what() << std::endl;
 							ptr = nullptr;
@@ -179,11 +180,12 @@ namespace wheel {
 					}
 				}
 				else {
-					
+
 					try
 					{
 						ptr = std::make_shared<send_buffer>(data, count);
-					}catch (const std::exception&ex)
+					}
+					catch (const std::exception & ex)
 					{
 						ptr = nullptr;
 						std::cout << ex.what() << std::endl;
@@ -198,8 +200,8 @@ namespace wheel {
 				if (write_count_ == 0) {
 					++write_count_; //1:等于0就相加，2:若此变量为1，说明有错误 
 
-					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()),strand_->wrap(std::bind(&ws_tcp_handle::on_write, shared_from_this(),
-						std::placeholders::_1, std::placeholders::_2)));
+					socket_->async_send(std::move(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size())),
+						std::bind(&ws_tcp_handle::on_write, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
 				}
 
 				return 0;
@@ -209,8 +211,9 @@ namespace wheel {
 				seconds_ = seconds;
 			}
 
-			int connect(const std::string& ip, int port,const std::string & handleshake_msg,std::string handleshake_key,MessageEventObserver recv_observer, CloseEventObserver close_observer) {
-				if (socket_ == nullptr ){
+			int connect(const std::string& ip, int port, const std::string& handleshake_msg, std::string handleshake_key,
+				MessageEventObserver recv_observer, CloseEventObserver close_observer) {
+				if (socket_ == nullptr) {
 					return -1;
 				}
 
@@ -233,12 +236,12 @@ namespace wheel {
 
 			//客户端支持异步重连
 			void reconect_server(std::string ip, int port, MessageEventObserver recv_observer, CloseEventObserver  close_observer) {
-				if (timer_ == nullptr){
+				if (timer_ == nullptr) {
 					return;
 				}
 
 				timer_->expires_from_now(std::chrono::seconds(seconds_));
-				timer_->async_wait(strand_->wrap([self=shared_from_this(), ip, port, recv_observer, close_observer](const boost::system::error_code& ec) {
+				timer_->async_wait([self = shared_from_this(), ip, port, recv_observer, close_observer](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
@@ -249,7 +252,7 @@ namespace wheel {
 
 					self->async_connect(ip, port, recv_observer, close_observer);
 					self->reconect_server(ip, port, recv_observer, close_observer);
-					}));
+				});
 			}
 
 			void register_connect_observer(ConnectEventObserver observer) {
@@ -269,7 +272,7 @@ namespace wheel {
 			}
 
 			std::shared_ptr<stream_format>get_read_parser() {
-				if (protocol_parser_ ==nullptr){
+				if (protocol_parser_ == nullptr) {
 					return nullptr;
 				}
 
@@ -377,7 +380,7 @@ namespace wheel {
 			}
 		private:
 			void init() {
-				if (socket_ == nullptr){
+				if (socket_ == nullptr) {
 					return;
 				}
 
@@ -386,7 +389,7 @@ namespace wheel {
 				socket_->set_option(boost::asio::ip::tcp::no_delay(true), ec);
 
 				//快速关闭,提高高并发
-				boost::asio::socket_base::linger linger_option(true,0);
+				boost::asio::socket_base::linger linger_option(true, 0);
 				socket_->set_option(linger_option, ec);
 
 				//有time_wait状态下，可端口短时间可以重用
@@ -395,7 +398,7 @@ namespace wheel {
 			}
 
 			void set_reuse_address() {
-				if (socket_ == nullptr){
+				if (socket_ == nullptr) {
 					return;
 				}
 
@@ -405,13 +408,14 @@ namespace wheel {
 
 
 			void to_read_websocket_data() {
-				if (socket_ == nullptr)	{
+				if (socket_ == nullptr) {
 					return;
 				}
 
 				recv_buffer_size_ = g_packet_buffer_size;
 				recv_buffer_ = wheel::traits::make_unique<char[]>(g_packet_buffer_size);
-				socket_->async_receive(boost::asio::buffer(&recv_buffer_[0], recv_buffer_size_),strand_->wrap([self =shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred) {
+				socket_->async_receive(std::move(boost::asio::buffer(&recv_buffer_[0], recv_buffer_size_)),
+					[self = shared_from_this()](const boost::system::error_code& ec, size_t bytes_transferred){
 					if (ec) {
 						self->set_connect_status(disconnect);
 						self->close_socket();
@@ -428,16 +432,17 @@ namespace wheel {
 					}
 
 					self->to_read_websocket_data();
-					}));
+				});
 			}
 
 			void to_read() {
-				if (socket_ == nullptr){
+				if (socket_ == nullptr) {
 					return;
 				}
 
 				recv_buffer_ = wheel::traits::make_unique<char[]>(recv_buffer_size_);
-				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0],recv_buffer_size_),strand_->wrap([self =shared_from_this()](const boost::system::error_code ec, size_t bytes_transferred) {
+				socket_->async_read_some(std::move(boost::asio::buffer(&recv_buffer_[0], recv_buffer_size_)),
+					[self = shared_from_this()](const boost::system::error_code ec, size_t bytes_transferred) {
 					if (ec.value() == 0) {
 						bool is_http = false;
 
@@ -448,7 +453,7 @@ namespace wheel {
 								std::string msg = web_socket_hand->handle_shark_respond(self->get_header_info("Sec-WebSocket-Key"));
 								self->to_send(msg.c_str(), msg.size());
 								if (self->ws_timer_heart_ == nullptr) {
-									self->ws_timer_heart_ = wheel::traits::make_unique<wheel::unit::timer>(std::bind(&ws_tcp_handle::close_socket,self));
+									self->ws_timer_heart_ = wheel::traits::make_unique<wheel::unit::timer>(std::bind(&ws_tcp_handle::close_socket, self));
 								}
 
 								self->ws_ping();
@@ -460,7 +465,8 @@ namespace wheel {
 
 						//客户端发送错误消息直接关闭
 						self->close_observer_(self, boost::system::errc::make_error_code(boost::system::errc::errc_t(-1)));
-					}else {
+					}
+					else {
 						if (self->get_connect_status() == disconnect) {
 							return;
 						}
@@ -469,25 +475,25 @@ namespace wheel {
 
 						self->close_observer_(self, ec);
 					}
-					}));
+				});
 			}
 
 			//读取websocket服务端数据
-			void to_read_server_data(const std::string &send_handleshake_key) {
-				if (socket_ == nullptr){
+			void to_read_server_data(const std::string& send_handleshake_key) {
+				if (socket_ == nullptr) {
 					return;
 				}
 
 				recv_buffer_ = wheel::traits::make_unique<char[]>(g_packet_buffer_size);
-				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0], g_packet_buffer_size),strand_->wrap([self =shared_from_this(), send_handleshake_key](
+				socket_->async_read_some(std::move(boost::asio::buffer(&recv_buffer_[0], g_packet_buffer_size)), [self = shared_from_this(), send_handleshake_key](
 					const boost::system::error_code ec, size_t bytes_transferred) {
 					if (ec.value() == 0) {
 						//handleshake check
 						std::shared_ptr<websocket_handle> web_socket_hand = std::make_shared<websocket_handle>();
-						bool falg = web_socket_hand->compare_handle_shark_key(unit::find_substr(&self->recv_buffer_[0],"Sec-WebSocket-Accept",":"),send_handleshake_key);
-						if (falg){
+						bool falg = web_socket_hand->compare_handle_shark_key(unit::find_substr(&self->recv_buffer_[0], "Sec-WebSocket-Accept", ":"), send_handleshake_key);
+						if (falg) {
 							if (self->ws_timer_heart_ == nullptr) {
-								self->ws_timer_heart_ = wheel::traits::make_unique<wheel::unit::timer>(std::bind(&ws_tcp_handle::close_socket,self));
+								self->ws_timer_heart_ = wheel::traits::make_unique<wheel::unit::timer>(std::bind(&ws_tcp_handle::close_socket, self));
 							}
 
 							self->ws_ping();
@@ -503,14 +509,14 @@ namespace wheel {
 
 						self->close_observer_(self, ec);
 					}
-					}));
+				});
 			}
 			void async_connect(std::string ip, int port, const MessageEventObserver& recv_observer, const CloseEventObserver& close_observer) {
 				if (socket_ == nullptr) {
 					return;
 				}
 
-				socket_->async_connect(TCP::endpoint(ADDRESS::from_string(ip), port),strand_->wrap([self =shared_from_this(), recv_observer, close_observer](const boost::system::error_code& ec) {
+				socket_->async_connect(TCP::endpoint(ADDRESS::from_string(ip), port), [self = shared_from_this(), recv_observer, close_observer](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
@@ -519,7 +525,7 @@ namespace wheel {
 					self->register_close_observer(close_observer);
 					self->register_recv_observer(recv_observer);
 					self->to_read();
-					}));
+				});
 			}
 			void on_write(const boost::system::error_code& ec, std::size_t bytes_transferred) {
 				--write_count_;
@@ -531,7 +537,7 @@ namespace wheel {
 
 				//最好加锁着地方
 				while (data_lock_.test_and_set(std::memory_order_acquire));
-				if (send_buffers_.empty()){
+				if (send_buffers_.empty()) {
 					data_lock_.clear(std::memory_order_release);
 					return;
 				}
@@ -544,8 +550,8 @@ namespace wheel {
 				}
 
 				if (!send_buffers_.empty()) {
-					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()),strand_->wrap(std::bind(&ws_tcp_handle::on_write,shared_from_this(),
-						std::placeholders::_1, std::placeholders::_2)));
+					socket_->async_send(std::move(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size())),
+						std::bind(&ws_tcp_handle::on_write, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
 					++write_count_;
 				}
 
@@ -601,7 +607,7 @@ namespace wheel {
 			}
 
 			void start_ws_heart() {
-				if (ws_timer_heart_ == nullptr){
+				if (ws_timer_heart_ == nullptr) {
 					return;
 				}
 
@@ -609,7 +615,7 @@ namespace wheel {
 			}
 
 			void reset_ws_heart() {
-				if (ws_timer_heart_ == nullptr){
+				if (ws_timer_heart_ == nullptr) {
 					return;
 				}
 
@@ -628,7 +634,7 @@ namespace wheel {
 				case ws_frame_type::WS_BINARY_FRAME:
 				{
 					//大于特定的缓存区大小，不予处理
-					if (bytes_transferred > g_packet_buffer_size){
+					if (bytes_transferred > g_packet_buffer_size) {
 						return true;
 					}
 
@@ -706,23 +712,22 @@ namespace wheel {
 		private:
 			std::atomic_flag data_lock_ = ATOMIC_FLAG_INIT;
 			HEADER_MAP http_head_infos_;
-			int connect_status_ = disconnect;
-			int seconds_ = g_client_reconnect_seconds; //客户端设置重连
-			int ws_heart_seconds_ = g_ws_heart_seconds;
-			std::int32_t write_count_ = 0;
-			std::size_t header_size_;
-			std::size_t packet_size_offset_;
-			std::size_t packet_cmd_offset_;
-			std::size_t recv_buffer_size_ = 1024;
+			int connect_status_{ disconnect };
+			int seconds_{ g_client_reconnect_seconds }; //客户端设置重连
+			int ws_heart_seconds_{ g_ws_heart_seconds };
+			std::int32_t write_count_{ 0 };
+			std::size_t header_size_{0};
+			std::size_t packet_size_offset_{0};
+			std::size_t packet_cmd_offset_{0};
+			std::size_t recv_buffer_size_{ 1024 };
 			std::shared_ptr<TCP::socket> socket_{};
-			ConnectEventObserver		connect_observer_;
-			MessageEventObserver		recv_observer_;
-			CloseEventObserver			close_observer_;
-			std::unique_ptr<char[]> recv_buffer_;
-			std::shared_ptr<boost::asio::io_service::strand>strand_;
+			ConnectEventObserver		connect_observer_{};
+			MessageEventObserver		recv_observer_{};
+			CloseEventObserver			close_observer_{};
+			std::unique_ptr<char[]> recv_buffer_{};
 			std::unique_ptr<boost::asio::steady_timer> timer_{};
-			std::unique_ptr<wheel::unit::timer>ws_timer_heart_ = nullptr;
-			std::shared_ptr<IProtocol_parser>protocol_parser_ = nullptr;
+			std::unique_ptr<wheel::unit::timer>ws_timer_heart_{};
+			std::shared_ptr<IProtocol_parser>protocol_parser_{};
 			std::list<std::shared_ptr<wheel::send_buffer>> send_buffers_;
 		};
 	}

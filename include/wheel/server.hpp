@@ -2,7 +2,7 @@
 #define sever_h__
 
 #include <unordered_map>
-//#include <atomic>
+#include <atomic>
 
 
 namespace wheel {
@@ -11,15 +11,7 @@ namespace wheel {
 		{
 		public:
 			server(const MessageEventObserver& recv_observer) :recv_observer_(recv_observer) {
-				try
-				{
-					strand_ = std::make_shared<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
-				}
-				catch (const std::exception & ex)
-				{
-					std::cout << ex.what() << std::endl;
-					exit(0);
-				}
+
 			}
 
 			server(const MessageEventObserver& recv_observer, int parser_type, std::size_t header_size,
@@ -27,21 +19,13 @@ namespace wheel {
 				:recv_observer_(recv_observer), parser_type_(parser_type)
 				, header_size_(header_size)
 				, packet_size_offset_(packet_size_offset)
-				, packet_cmd_offset_(packet_cmd_offset)
-			{
-				try
-				{
-					strand_ = std::make_shared<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
-				}
-				catch (const std::exception&ex)
-				{
-					std::cout << ex.what() << std::endl;
-					exit(0);
-				}
+				, packet_cmd_offset_(packet_cmd_offset){
+
 			}
 
 			~server() {
-
+				connects_.clear();
+				io_service_poll::get_instance().stop();
 			}
 
 			void init(int port, int connect_pool =1) {
@@ -52,10 +36,15 @@ namespace wheel {
 
 				//accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
 				boost::system::error_code ec;
-				accept_ = wheel::traits::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_poll::get_instance().get_io_service());
+				accept_ = traits::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_poll::get_instance().get_main_io_service());
 				
 				//一定要调用open否则会监听失败
-				accept_->open(boost::asio::ip::tcp::v4());
+				accept_->open(boost::asio::ip::tcp::v4(),ec);
+
+				if (!accept_->is_open()) {
+					return;
+				}
+
 				//端口复用
 				accept_->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), ec);
 				accept_->bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port), ec);
@@ -74,8 +63,8 @@ namespace wheel {
 				}
 			}
 
-			void run(size_t thread_num=std::thread::hardware_concurrency()) {
-				io_service_poll::get_instance().run(thread_num);
+			void run() {
+				io_service_poll::get_instance().run();
 			}
 		private:
 			bool port_in_use(unsigned short port) {
@@ -98,7 +87,7 @@ namespace wheel {
 				std::shared_ptr<tcp_handle > new_session = nullptr;
 				try
 				{
-					new_session =std::make_shared<tcp_handle>(strand_,header_size_, packet_size_offset_, packet_cmd_offset_);
+					new_session =std::make_shared<tcp_handle>(header_size_, packet_size_offset_, packet_cmd_offset_);
 				}
 				catch (const std::exception&ex)
 				{
@@ -121,7 +110,8 @@ namespace wheel {
 						return;
 					}
 
-					new_session->activate();
+					io_service_poll::get_instance().dispatch(std::bind(&tcp_handle::activate,new_session));
+					//new_session->activate();
 					make_session();
 					});
 			}
@@ -139,39 +129,36 @@ namespace wheel {
 					return;
 				}
 
-				auto iter_find = connects_.find(handler);
-				if (iter_find != connects_.end()) {
-					return;
-				}
-
 				std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
 				std::time_t timestamp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count();
-				//while (lock_.test_and_set(std::memory_order_acquire));
-				connects_.emplace(handler, timestamp);
+				while (lock_.test_and_set(std::memory_order_acquire));
+				auto iter_find = connects_.find(handler);
+				if (iter_find == connects_.end()) {
+					connects_.emplace(handler, timestamp);
+				}
 
-				//lock_.clear(std::memory_order_release);
+				lock_.clear(std::memory_order_release);
 			}
 
 			void on_close(std::shared_ptr<wheel::tcp_socket::tcp_handle> handler, const boost::system::error_code& ec) {
 				//tcp主动断开 boost::asio::error::connection_reset
 				//websocket主动断开  boost::asio::error::connection_aborted
-				//while (lock_.test_and_set(std::memory_order_acquire));
+				while (lock_.test_and_set(std::memory_order_acquire));
 				auto iter_find = connects_.find(handler);
 				if (iter_find != connects_.end()) {
 					connects_.erase(iter_find);
 				}
 
-				//lock_.clear(std::memory_order_release);
+				lock_.clear(std::memory_order_release);
 			}
 		private:
-			//std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
+			std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
 			int parser_type_ = 0;
 			std::size_t header_size_ = 0;
 			std::size_t packet_size_offset_ = 0;
 			std::size_t packet_cmd_offset_ = 0;
 			MessageEventObserver		recv_observer_;
 			std::unique_ptr<TCP::acceptor>accept_;
-			std::shared_ptr<boost::asio::io_service::strand>strand_;
 			std::vector<std::shared_ptr<std::thread>> ios_threads_;
 			std::unordered_map<std::shared_ptr<wheel::tcp_socket::tcp_handle>, std::time_t>connects_;
 		};
