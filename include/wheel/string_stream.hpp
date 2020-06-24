@@ -168,7 +168,7 @@ namespace wheel {
 
 		typedef basic_string_stream<std::allocator<char>> string_stream;
 	}//str_stream
-}//service_proxy
+}//wheel
 
 
 #endif // string_stream_h__
