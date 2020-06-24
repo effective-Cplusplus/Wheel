@@ -2048,7 +2048,11 @@ JSON_HEDLEY_DIAGNOSTIC_POP
 #endif
 
 // C++ language standard detection
-#if (defined(__cplusplus) && __cplusplus >= 201703L) || (defined(_HAS_CXX17) && _HAS_CXX17 == 1) // fix for issue #464
+#if (defined(__cplusplus) && __cplusplus >= 202002L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L)
+#define JSON_HAS_CPP_20
+#define JSON_HAS_CPP_17
+#define JSON_HAS_CPP_14
+#elif (defined(__cplusplus) && __cplusplus >= 201703L) || (defined(_HAS_CXX17) && _HAS_CXX17 == 1) // fix for issue #464
 #define JSON_HAS_CPP_17
 #define JSON_HAS_CPP_14
 #elif (defined(__cplusplus) && __cplusplus >= 201402L) || (defined(_HAS_CXX14) && _HAS_CXX14 == 1)
@@ -11030,6 +11034,7 @@ namespace nlohmann
 #include <algorithm> // all_of
 #include <cassert> // assert
 #include <cctype> // isdigit
+#include <limits> // max
 #include <numeric> // accumulate
 #include <string> // string
 #include <utility> // move
@@ -11355,10 +11360,15 @@ namespace nlohmann
 
         @return integer representation of @a s
 
+        @throw parse_error.106  if an array index begins with '0'
+        @throw parse_error.109  if an array index begins not with a digit
         @throw out_of_range.404 if string @a s could not be converted to an integer
+        @throw out_of_range.410 if an array index exceeds size_type
         */
-        static int array_index(const std::string& s)
+        static typename BasicJsonType::size_type array_index(const std::string& s)
         {
+            using size_type = typename BasicJsonType::size_type;
+
             // error condition (cf. RFC 6901, Sect. 4)
             if (JSON_HEDLEY_UNLIKELY(s.size() > 1 and s[0] == '0'))
             {
@@ -11374,10 +11384,10 @@ namespace nlohmann
             }
 
             std::size_t processed_chars = 0;
-            int res = 0;
+            unsigned long long res = 0;
             JSON_TRY
             {
-                res = std::stoi(s, &processed_chars);
+                res = std::stoull(s, &processed_chars);
             }
                 JSON_CATCH(std::out_of_range&)
             {
@@ -11390,7 +11400,14 @@ namespace nlohmann
                 JSON_THROW(detail::out_of_range::create(404, "unresolved reference token '" + s + "'"));
             }
 
-            return res;
+            // only triggered on special platforms (like 32bit), see also
+            // https://github.com/nlohmann/json/pull/2203
+            if (res >= static_cast<unsigned long long>((std::numeric_limits<size_type>::max)()))
+            {
+                JSON_THROW(detail::out_of_range::create(410, "array index " + s + " exceeds size_type")); // LCOV_EXCL_LINE
+            }
+
+            return static_cast<size_type>(res);
         }
 
         json_pointer top() const
@@ -11449,7 +11466,7 @@ namespace nlohmann
                 case detail::value_t::array:
                 {
                     // create an entry in the array
-                    result = &result->operator[](static_cast<size_type>(array_index(reference_token)));
+                    result = &result->operator[](array_index(reference_token));
                     break;
                 }
 
@@ -11527,8 +11544,7 @@ namespace nlohmann
                     else
                     {
                         // convert array index to number; unchecked access
-                        ptr = &ptr->operator[](
-                            static_cast<size_type>(array_index(reference_token)));
+                        ptr = &ptr->operator[](array_index(reference_token));
                     }
                     break;
                 }
@@ -11572,7 +11588,7 @@ namespace nlohmann
                     }
 
                     // note: at performs range check
-                    ptr = &ptr->at(static_cast<size_type>(array_index(reference_token)));
+                    ptr = &ptr->at(array_index(reference_token));
                     break;
                 }
 
@@ -11622,8 +11638,7 @@ namespace nlohmann
                     }
 
                     // use unchecked array access
-                    ptr = &ptr->operator[](
-                        static_cast<size_type>(array_index(reference_token)));
+                    ptr = &ptr->operator[](array_index(reference_token));
                     break;
                 }
 
@@ -11666,7 +11681,7 @@ namespace nlohmann
                     }
 
                     // note: at performs range check
-                    ptr = &ptr->at(static_cast<size_type>(array_index(reference_token)));
+                    ptr = &ptr->at(array_index(reference_token));
                     break;
                 }
 
@@ -11730,7 +11745,7 @@ namespace nlohmann
                         }
                     }
 
-                    const auto idx = static_cast<size_type>(array_index(reference_token));
+                    const auto idx = array_index(reference_token);
                     if (idx >= ptr->size())
                     {
                         // index out of range
@@ -12237,6 +12252,7 @@ namespace nlohmann
         {
             using string_t = typename BasicJsonType::string_t;
             using binary_t = typename BasicJsonType::binary_t;
+            using number_float_t = typename BasicJsonType::number_float_t;
 
         public:
             /*!
@@ -12403,18 +12419,7 @@ namespace nlohmann
                     }
                     else
                     {
-                        if (static_cast<double>(j.m_value.number_float) >= static_cast<double>(std::numeric_limits<float>::lowest()) and
-                            static_cast<double>(j.m_value.number_float) <= static_cast<double>((std::numeric_limits<float>::max)()) and
-                            static_cast<double>(static_cast<float>(j.m_value.number_float)) == static_cast<double>(j.m_value.number_float))
-                        {
-                            oa->write_character(get_cbor_float_prefix(static_cast<float>(j.m_value.number_float)));
-                            write_number(static_cast<float>(j.m_value.number_float));
-                        }
-                        else
-                        {
-                            oa->write_character(get_cbor_float_prefix(j.m_value.number_float));
-                            write_number(j.m_value.number_float);
-                        }
+                        write_compact_float(j.m_value.number_float, detail::input_format_t::cbor);
                     }
                     break;
                 }
@@ -12713,8 +12718,7 @@ namespace nlohmann
 
                 case value_t::number_float:
                 {
-                    oa->write_character(get_msgpack_float_prefix(j.m_value.number_float));
-                    write_number(j.m_value.number_float);
+                    write_compact_float(j.m_value.number_float, detail::input_format_t::msgpack);
                     break;
                 }
 
@@ -13725,6 +13729,26 @@ namespace nlohmann
                 }
 
                 oa->write_characters(vec.data(), sizeof(NumberType));
+            }
+
+            void write_compact_float(const number_float_t n, detail::input_format_t format)
+            {
+                if (static_cast<double>(n) >= static_cast<double>(std::numeric_limits<float>::lowest()) and
+                    static_cast<double>(n) <= static_cast<double>((std::numeric_limits<float>::max)()) and
+                    static_cast<double>(static_cast<float>(n)) == static_cast<double>(n))
+                {
+                    oa->write_character(format == detail::input_format_t::cbor
+                        ? get_cbor_float_prefix(static_cast<float>(n))
+                        : get_msgpack_float_prefix(static_cast<float>(n)));
+                    write_number(static_cast<float>(n));
+                }
+                else
+                {
+                    oa->write_character(format == detail::input_format_t::cbor
+                        ? get_cbor_float_prefix(n)
+                        : get_msgpack_float_prefix(n));
+                    write_number(n);
+                }
             }
 
         public:
@@ -19550,7 +19574,7 @@ namespace nlohmann
         template<class ValueType, typename std::enable_if<
             std::is_convertible<basic_json_t, ValueType>::value
             and not std::is_same<value_t, ValueType>::value, int>::type = 0>
-            ValueType value(const typename object_t::key_type& key, const ValueType& default_value) const
+            ValueType value(const typename object_t::key_type& key, ValueType&& default_value) const
         {
             // at only works for objects
             if (JSON_HEDLEY_LIKELY(is_object()))
@@ -19562,7 +19586,7 @@ namespace nlohmann
                     return *it;
                 }
 
-                return default_value;
+                return std::move(default_value);
             }
 
             JSON_THROW(type_error::create(306, "cannot use value() with " + std::string(type_name())));
@@ -19574,7 +19598,7 @@ namespace nlohmann
         */
         string_t value(const typename object_t::key_type& key, const char* default_value) const
         {
-            return value(key, string_t(default_value));
+            return value(key, std::move(string_t(default_value)));
         }
 
         /*!
@@ -19622,7 +19646,7 @@ namespace nlohmann
         */
         template<class ValueType, typename std::enable_if<
             std::is_convertible<basic_json_t, ValueType>::value, int>::type = 0>
-            ValueType value(const json_pointer& ptr, const ValueType& default_value) const
+            ValueType value(const json_pointer& ptr, ValueType&& default_value) const
         {
             // at only works for objects
             if (JSON_HEDLEY_LIKELY(is_object()))
@@ -19634,7 +19658,7 @@ namespace nlohmann
                 }
                     JSON_INTERNAL_CATCH(out_of_range&)
                 {
-                    return default_value;
+                    return std::move(default_value);
                 }
             }
 
@@ -19648,7 +19672,7 @@ namespace nlohmann
         JSON_HEDLEY_NON_NULL(3)
             string_t value(const json_pointer& ptr, const char* default_value) const
         {
-            return value(ptr, string_t(default_value));
+            return value(ptr, std::move(string_t(default_value)));
         }
 
         /*!
@@ -21645,6 +21669,34 @@ namespace nlohmann
         /*!
         @brief exchanges the values
 
+        Exchanges the contents of the JSON value from @a left with those of @a right. Does not
+        invoke any move, copy, or swap operations on individual elements. All
+        iterators and references remain valid. The past-the-end iterator is
+        invalidated. implemented as a friend function callable via ADL.
+
+        @param[in,out] left JSON value to exchange the contents with
+        @param[in,out] right JSON value to exchange the contents with
+
+        @complexity Constant.
+
+        @liveexample{The example below shows how JSON values can be swapped with
+        `swap()`.,swap__reference}
+
+        @since version 1.0.0
+        */
+        friend void swap(reference left, reference right) noexcept (
+            std::is_nothrow_move_constructible<value_t>::value and
+            std::is_nothrow_move_assignable<value_t>::value and
+            std::is_nothrow_move_constructible<json_value>::value and
+            std::is_nothrow_move_assignable<json_value>::value
+            )
+        {
+            left.swap(right);
+        }
+
+        /*!
+        @brief exchanges the values
+
         Exchanges the contents of a JSON array with those of @a other. Does not
         invoke any move, copy, or swap operations on individual elements. All
         iterators and references remain valid. The past-the-end iterator is
@@ -22820,7 +22872,8 @@ namespace nlohmann
         number_unsigned | 256..65535                        | uint 16          | 0xCD
         number_unsigned | 65536..4294967295                 | uint 32          | 0xCE
         number_unsigned | 4294967296..18446744073709551615  | uint 64          | 0xCF
-        number_float    | *any value*                       | float 64         | 0xCB
+        number_float    | *any value representable by a float*     | float 32 | 0xCA
+        number_float    | *any value NOT representable by a float* | float 64 | 0xCB
         string          | *length*: 0..31                   | fixstr           | 0xA0..0xBF
         string          | *length*: 32..255                 | str 8            | 0xD9
         string          | *length*: 256..65535              | str 16           | 0xDA
@@ -22843,9 +22896,6 @@ namespace nlohmann
               - byte strings with more than 4294967295 bytes
               - arrays with more than 4294967295 elements
               - objects with more than 4294967295 elements
-
-        @note The following MessagePack types are not used in the conversion:
-              - float 32 (0xCA)
 
         @note Any MessagePack output created @ref to_msgpack can be successfully
               parsed by @ref from_msgpack.
@@ -23961,7 +24011,7 @@ namespace nlohmann
                     else
                     {
                         const auto idx = json_pointer::array_index(last_path);
-                        if (JSON_HEDLEY_UNLIKELY(static_cast<size_type>(idx) > parent.size()))
+                        if (JSON_HEDLEY_UNLIKELY(idx > parent.size()))
                         {
                             // avoid undefined behavior
                             JSON_THROW(out_of_range::create(401, "array index " + std::to_string(idx) + " is out of range"));
@@ -24004,7 +24054,7 @@ namespace nlohmann
                 else if (parent.is_array())
                 {
                     // note erase performs range check
-                    parent.erase(static_cast<size_type>(json_pointer::array_index(last_path)));
+                    parent.erase(json_pointer::array_index(last_path));
                 }
             };
 
@@ -24439,11 +24489,14 @@ namespace std
         }
     };
 
-    /*!
-    @brief exchanges the values of two JSON objects
+    // C++20 prohibit function specialization in the std namespace.
+#ifndef JSON_HAS_CPP_20
 
-    @since version 1.0.0
-    */
+/*!
+@brief exchanges the values of two JSON objects
+
+@since version 1.0.0
+*/
     template<>
     inline void swap<nlohmann::json>(nlohmann::json& j1, nlohmann::json& j2) noexcept(
         is_nothrow_move_constructible<nlohmann::json>::value and
@@ -24452,6 +24505,8 @@ namespace std
     {
         j1.swap(j2);
     }
+
+#endif
 
 } // namespace std
 
