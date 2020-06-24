@@ -16,8 +16,8 @@ namespace wheel {
 			}
 
 			~basic_string_stream() {
-				clear();
 				this->alloc_.deallocate(header_ptr_, this->length_);
+				header_ptr_ = nullptr;
 			}
 
 			inline std::size_t write(const char* buffer) {
@@ -111,12 +111,12 @@ namespace wheel {
 				this->write_ptr_ += len;
 				return len;
 			}
-		private:
+
 			inline void clear() {
 				this->read_ptr_ = this->header_ptr_;
 				this->write_ptr_ = this->header_ptr_;
 			}
-
+		private:
 			inline ::std::size_t read_length() const {
 				return this->read_ptr_ - this->header_ptr_;
 			}
