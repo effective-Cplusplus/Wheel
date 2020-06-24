@@ -1,9 +1,8 @@
 #ifndef string_stream_h__
 #define string_stream_h__
 
-#include "common.hpp"
-
-namespace super_dns {
+#include <string>
+namespace wheel {
 	namespace str_stream {
 		template <typename alloc_ty>
 		class basic_string_stream {
